@@ -1,0 +1,134 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<link rel="icon" type="image/x-icon" href="icon.svg">	<title>Laman: Hittite Name Finder</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Raleway&display=swap" rel="stylesheet">
+		<link rel="stylesheet" href="{% static 'style.css' %}" type="text/css" media="all">
+		<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+		<link
+				rel="stylesheet"
+				href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css"
+				/>
+	</head>
+	<body>
+		<main class="row container">
+			<br></br>
+			<div class="row titlecontainer">
+				<a href="/" target="" class="">
+				<img src="{% static 'laman.png' %}" class="col l4 m5 s6 responsive-img" alt=""/>
+				<a href="https://w3.bilkent.edu.tr/bilkent/" target="_blank" class="right col l4 m5 s6">
+				<img src="https://w3.bilkent.edu.tr/bilkent/wp-content/uploads/sites/2/2015/09/ING-amblem-yazi.svg" href="" class="responsive-img " alt=""/>
+				</a>
+				<a href="http://www.unior.it" target="_blank" class="right col l4 m5 s6">
+				<img src="{% static 'logo Napoli.png' %}" class="responsive-img "  alt=""/>
+				</a>
+				<h1 class="title"></h1>
+			</div>
+<div class="row help">
+<h3>About the project</h3>
+
+The Hittite Name Finder is a tool aiming to facilitate the retrieval of, and research on, names in Hittite texts. Originally conceived in the frame of the DFG-funded project “Critical edition, digital publication, and systematic analysis of the Hittite cult-inventories (CTH 501-530)”, a first version coded by Eileen Xing and Hartmut Oertel was released in 2020 at <a class="blue-text" href="https://cuneiform.neocities.org/laman/finder.html" target="_blank"> https://cuneiform.neocities.org/laman/finder.html</a>. The present version is the result of a cooperation between <a class="blue-text" href="http://www.github.com/makman12" target="_blank"><i>M. Ali Akman (Bilkent University)</i></a> and <a class="blue-text " href="https://osf.io/5qjpk/wiki/home/" target="_blank"><i>Michele Cammarosano (University of Naples ‘L’Orientale’)</i></a> and combines the general list of names with the lists of occurrences of divine and personal names. The tool is conceived as a collaborative effort at the service of the research community: feedback, corrections, and additions are welcome and gratefully acknowledged.
+
+</div>
+<div class="row help">
+<h3>The corpus</h3> 
+The names, occurrences, and metadata are based on the <a href="https://cuneiform.neocities.org/laman/start.html" target="_blank" class="blue-text "><i>LAMAN</i></a> project. Basically, occurrences of divine and personal names consist of an update of the standard available repertoires, while the general list of names aims at completeness (not yet implemented, however, for personal names); occurrences of geographical names are not included, since they will be available in Adam Kryszeń’s repertoire Toponyme der Hethiter at HPM. The data pool is regularly expanded and updated: please refer to the <a href="https://cuneiform.neocities.org/laman/start.html" target="_blank" class="blue-text "><i>LAMAN</i></a> web page for detailed information on the texts that are taken into account, and on how attestations are collected and processed.
+</div>
+<h3 class="center-align">How it works</h3>
+<div class="row help">
+<div class="col s6">
+<h4>Primary forms, variant forms, and correspondences</h4>
+The core of the Hittite Name Finder consists of a list of names which can be filtered and searched, each one provided with a set of metadata. The name forms displayed in the grid items visible to the user correspond to normalized spellings of the attested names. 
+When two or more forms are thought to represent variant forms of one name (e.g. Kattaḫḫa, Ḫataḫḫa, Ḫataḫga, Ḫatagga, Ḫatakki, Ḫatkatta), only one of them is displayed in the grid, while the other ones are booked as <b>‘variant forms’</b>  within the popup window that can be opened by clicking on a name in the grid (variant forms, together with variant spellings and ‘correspondences’, are linked to the relevant primary name, see Search parameters). Note that the distinction of primary and variant forms is not yet implemented for personal names. 
+Names which are treated separately within the grid but are thought to have been equated with each other at least in some contexts are cross-referenced as <b>‘correspondences’</b> in the popup windows (e.g., Kattaḫḫa and MUNUS.LUGAL). 
+</div>
+<div class="col s6">
+<img src="{% static 'ex1.png' %}" alt="example1" class=" materialboxed responsive-img"/>
+</div>
+</div>
+<div class="row help">
+<div class="col s6">
+<h4>Search parameters</h4>
+Both ‘variant forms’ and ‘correspondences’ are linked to the relevant primary names and count as matches when performing a query: i.e., when searching after Ḫatkatta or MUNUS.LUGAL one finds (also) Kattaḫḫa in the search results. The search process is <b>insensitive to diacritics, double letters, and voice (k/g, t/d, p/b).</b> E.g., no matters whether one searches after “gadaha”, “kadaha”, “kataḫa”, “kaaaaadahhhaa” (etc), the name Kattaḫḫa will always be among the matches. NB: this applies to all searchable forms, with no distinction between Sumerograms, Akkadograms, and phonetically written Hittite. E.g., a search after “arat” will return (also) ARAD-D10 among the results.
+</div>
+<div class="col s6">
+<img src="{% static 'ex2.png' %}" alt="example1" class=" materialboxed responsive-img"/>
+</div>
+</div>
+<div class="row help">
+<div class="col s6">
+<h4>Regular expressions</h4>
+As default, the search box allows searching with <a href="https://en.wikipedia.org/wiki/Regular_expression" target="_blank">regular expressions</a> (e.g., the characters ^ and $ can be used as left- and right-end markers respectively: a query after “ili$” will return only names ending in -ili, and so on). Combining multiple regex patterns can be useful in evaluating possible restorations: e.g., in the case of a fragmentary name with a RA somewhere in the middle and a ḪA at the very end, one may want to search after “.*ra.*ha$” (“.” matches any single character, “*” matches the preceding element zero or more time). NB: since the period counts as a regular expression, it must be omitted when searching for composite Sumerograms, otherwise the returned matches will not meet the query’s intention: e.g., a query after A.AB will not return A.AB.BA. 
+</div>
+<div class="col s6">
+<img src="{% static 'regex.png' %}" alt="example1" class=" materialboxed responsive-img"/>
+</div>
+<div class="col s6">
+<img src="{% static 'ex3.png' %}" alt="example1" class=" materialboxed responsive-img"/>
+</div>
+</div>
+<div class="row help">
+<div class="col s6">
+<h4>Filters</h4>
+Apart from using the search box, the names can be sorted out by using the filters corresponding to the categories “Type”, “Spelling”, and “Completeness”. The spelling of a name is classified as “logographic” when it consists of, or begins with, a logographically written element or an uninterpreted hieroglyphic sign.
+</div>
+<div class="col s6">
+<img src="{% static 'ex4.png' %}" alt="example1" class=" materialboxed responsive-img"/>
+</div>
+</div>
+<div class="row help">
+<div class="col s6">
+<h4>Attestations and tablet search</h4>
+The attestations listed for each name in the popup windows are hyperlinked to the corresponding entries of the Konkordanz der hethitischen Keilschrifttafeln at HPM (the link works only for publication numbers of cuneiform tablets, and returns a blank page in all other instances). 
+Users can also search after tablets (or publication installments): e.g., a search for “KBo 40” will return all tablet fragments published in KBo 40 which contain names included in the LAMAN corpus (for which see above); the relevant names are displayed in a popup window by clicking on a tablet (fragment).
+</div>
+<div class="col s3">
+<img src="{% static 'ex5.png' %}" alt="example1" class=" materialboxed responsive-img"/>
+</div>
+<div class="col s3">
+<img src="{% static 'ex6.png' %}" alt="example1" class=" materialboxed responsive-img"/>
+</div>
+<div class="row col s6">
+<div class="col s6">
+<img src="{% static 'ex7.png' %}" alt="example1" class=" materialboxed responsive-img"/>
+</div>
+<div class="col s6">
+<img src="{% static 'ex8.png' %}" alt="example1" class=" materialboxed responsive-img"/>
+</div>
+</div>
+</div>
+<div class="col s12">
+<div class="row help">
+<h4>Literature and notes</h4>
+Besides variant forms, correspondences, and attestations, also selected literature and notes are provided within the popup windows linked to the primary names. The given literature aims not at completeness but rather at providing recent bibliography which is absent in the available repertoires. Here, again, corrections and additions are very welcome.
+… enjoy!
+</div>
+</div>
+		</main>
+		<footer class="page-footer amber lighten-4 black-text">
+				<span class="left">Part of <a href="https://cuneiform.neocities.org/laman/start.html" target="_blank" class="blue-text text-darken-3"><i>LAMAN</i></a> project under <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" class="blue-text text-darken-3"><i>GPLv3</i></a> license
+						</span>
+				<div class="right">
+							<a class="blue-text text-darken-3" href="http://www.github.com/makman12" target="_blank"><i>M. Ali Akman</i></a> and <a class="blue-text text-darken-3" href="https://osf.io/5qjpk/wiki/home/" target="_blank"><i>Michele Cammarosano</i></a>, CC BY-SA 4.0
+			</div>
+		</footer>
+		<br></br>
+		<br></br>
+		<br></br>
+		<br></br>
+	</body>
+	<script charset="utf-8">
+		 
+  document.addEventListener('DOMContentLoaded', function() {
+    var elems = document.querySelectorAll('.materialboxed');
+    var instances = M.Materialbox.init(elems);
+  });
+	</script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+</html>

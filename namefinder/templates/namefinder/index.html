@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<link rel="icon" type="image/x-icon" href="icon.svg">
+		<title>Laman: Hittite Name Finder</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Raleway&display=swap" rel="stylesheet">
+		<link rel="stylesheet" href="static/style.css" type="text/css" media="all">
+		<link rel="stylesheet" href="static/unicode.css" type="text/css" media="all">
+		<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+		<link
+				rel="stylesheet"
+				href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css"
+				/>
+	</head>
+	<body>
+		<main class="row container">
+			<br></br>
+			<div class="row titlecontainer">
+				<a href="/" target="" class="">
+				<img src="static/laman.png" class="col l4 m5 s6 responsive-img" alt=""/>
+				<a href="https://w3.bilkent.edu.tr/bilkent/" target="_blank" class="right col l4 m5 s6">
+				<img src="https://w3.bilkent.edu.tr/bilkent/wp-content/uploads/sites/2/2015/09/ING-amblem-yazi.svg" href="" class="responsive-img " alt=""/>
+				</a>
+				<a href="http://www.unior.it" target="_blank" class="right col l4 m5 s6">
+				<img src="static/logo Napoli.png" class="responsive-img "  alt=""/>
+				</a>
+				<h1 class="title"></h1>
+			</div>
+			<div class="s12 row closer" >
+<span class="text-left col s6">Search for:</span>
+<span class="right-align col s6">Search Method:</span>
+			</div>
+			<div class="s12 row">
+				<a class="btn disabled napoli col s2" id="searchNames">Names</a>
+				<a class="btn napoli  col s2" id="searchTablets">Tablets</a>
+				<a class="btn disabled bilkent col s2 offset-s4" id="regexSearch">Regex</a>
+				<a class="btn bilkent col s2" id="normalSearch">Normal</a>
+			</div>
+			<nav class="s12">
+				<div class="nav-wrapper">
+					<div class="input-field white lighten-4">
+						<input id="search" type="search" spellcheck="false"  autocomplete=off >
+						<label class="label-icon" for="search"><i class="material-icons black-text">search</i></label>
+						<i class="material-icons">close</i>
+					</div>
+				</div>
+			</nav>
+
+			<p class="center-align ">Click on a name for details. Use the filters below and/or a string in the search box (insensitive to diacritics, double letters, and voice). As default option, this search box allows you to search with <a class="blue-text" href="https://en.wikipedia.org/wiki/Regular_expression" target="_blank">regex</a> patterns (e.g., use the characters ^ and $ as left- and right-end markers respectively). For more infos on this project, the corpus, and how the search options work, please see the <a class="blue-text" href="/help" target="_blank">User’s guide</a>.</p>
+			<ul class="collapsible">
+				<li class="col s4">
+					<div class="collapsible-header"><i class="material-icons">sort</i>Types</div>
+					<div class="collapsible-body">
+						<a id="type_all" class="btn-small white disabled lighten-3 black-text">All</a>
+						<a id="type_dn" class="btn-small purple lighten-2 white-text">Divine Names</a>
+						<a id="type_pn" class="btn-small blue lighten-2 white-text">Personal Names</a>
+						<a id="type_gn" class="btn-small green lighten-2 white-text">Geographical Names</a>
+					</div>
+					</div>
+				</li>
+				<li class="col s4">
+					<div class="collapsible-header"><i class="material-icons">edit</i>Spelling</div>
+					<div class="collapsible-body">
+						<a id="spel_all" class="btn-small blue disabled lighten-3 white-text">All</a>
+						<a id="spel_phon" class="btn-small blue lighten-3 white-text ">Phonetic</a>
+						<a id="spel_logo" class="btn-small blue lighten-3 white-text">Logographic</a>
+						<a id="spel_akk" class="btn-small blue lighten-3 white-text">Akkadographic</a>
+
+				</li>
+				<li class="col s4">
+					<div class="collapsible-header"><i class="material-icons">border_style</i>Completness</div>
+					<div class="collapsible-body">
+						<a id="comp_all"  class="btn-small blue lighten-3 disabled white-text">All</a>
+						<a id="comp_acep" class="btn-small blue lighten-3 white-text">Acephalous</a>
+						<a id="comp_incomp" class="btn-small blue lighten-3 white-text">Incomplete</a>
+				</li>
+			</ul>
+			<h4 class="row col s12">Results</h4>
+			<div id="data" class="row">
+
+			</div>
+			<div id="data2" class="row">
+
+			</div>
+		</main>
+		<footer class="page-footer amber lighten-4 black-text">
+				<span class="left">Part of <a href="https://cuneiform.neocities.org/laman/start.html" target="_blank" class="blue-text text-darken-3"><i>LAMAN</i></a> project under <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" class="blue-text text-darken-3"><i>GPLv3</i></a> license
+						</span>
+				<div class="right">
+							<a class="blue-text text-darken-3" href="http://www.github.com/makman12" target="_blank"><i>M. Ali Akman</i></a> and <a class="blue-text text-darken-3" href="https://osf.io/5qjpk/wiki/home/" target="_blank"><i>Michele Cammarosano</i></a>, CC BY-SA 4.0
+			</div>
+		</footer>
+		<div id="modal1" class="modal">
+			<div id="modal-content" class="modal-content">
+			</div>
+			<div class="modal-footer">
+				<a class="modal-close waves-effect waves-blue btn-flat">Close</a>
+			</div>
+		</div>
+		<br></br>
+		<br></br>
+		<br></br>
+		<br></br>
+	</body>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+	<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+	<script src="static/unicodedata.js" charset="utf-8"></script>
+	<script src="static/converter.js" charset="utf-8"></script>
+	<script type="text/javascript" src="static/script.js"></script>
+</html>
