@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 
 from pathlib import Path
 import pymysql
+import django_heroku
+django_heroku.settings(locals())
 
 pymysql.install_as_MySQLdb()
 
