@@ -28,9 +28,9 @@ SECRET_KEY = 'django-insecure-+6s4lvg+*vftkp1ncy2q!71s@a((t2(rr6r*udfz+2(@j9slq#
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["139.179.138.124","127.0.0.1","0.0.0.0"]
 
-STATIC_URL = 'static/'
+STATIC_URL = '/home/mali/michele/server/laman/laman/namefinder/static/'
 
 CORS_ORIGIN_ALLOW_ALL = True
 
