@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 
 from pathlib import Path
 import pymysql
+import os
 
 pymysql.install_as_MySQLdb()
 
@@ -26,13 +27,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-+6s4lvg+*vftkp1ncy2q!71s@a((t2(rr6r*udfz+2(@j9slq#'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ["139.179.138.124","127.0.0.1","0.0.0.0"]
+ALLOWED_HOSTS = ["193.205.136.58","127.0.0.1","0.0.0.0",".laman2.hittites.org"]
 
-STATIC_URL = '/home/mali/michele/server/laman/laman/namefinder/static/'
+STATIC_ROOT = "/var/www/hittites.org/static"
+STATIC_URL = '/static/'
+STATICFILES_DIRS=[os.path.join(BASE_DIR,"static"),STATIC_URL]
 
 CORS_ORIGIN_ALLOW_ALL = True
+CSRF_TRUSTED_ORIGINS=['https://*.hittites.org']
 
 
 # Application definition
@@ -129,7 +133,6 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
-STATIC_URL = 'static/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
