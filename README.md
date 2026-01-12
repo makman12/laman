@@ -53,10 +53,4 @@ See [DEPLOY.md](DEPLOY.md) for full deployment instructions.
 The database (`db.sqlite3`) is not included in the repository due to size.
 Contact the maintainers for access to the data.
 
-## License
 
-[Add your license here]
-
-## Contact
-
-[Add contact information]
