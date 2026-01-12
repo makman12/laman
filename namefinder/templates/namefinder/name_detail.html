@@ -1,0 +1,872 @@
+{% extends 'namefinder/base.html' %}
+{% load static %}
+
+{% block title %}{{ name.name }} - LAMAN{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="{% url 'namefinder:index' %}">Search</a>
+    <span>›</span>
+    {{ name.name }}
+</div>
+
+<div class="detail-header">
+    <div class="detail-header-main">
+        <h1 class="detail-title">
+            <span id="name-display">{{ name.name|safe }}</span>
+            {% if user.is_authenticated %}
+            <input type="text" id="name-input" class="inline-input" value="{{ name.name }}" style="display: none;">
+            {% endif %}
+            {% if name.name_type.name == 'place' %}
+            <a href="https://www.hethport.uni-wuerzburg.de/HiTop/hetgeoitem.php?i={{ name.name|urlencode }}" target="_blank" rel="noopener" class="hitop-link" title="View in HiTop database">see at HiTop →</a>
+            {% endif %}
+        </h1>
+        <div class="detail-meta">
+            {% if name.name_type %}
+            <span class="name-type-badge {{ name.name_type.name }}" id="type-badge">{{ name.name_type.name }}</span>
+            {% endif %}
+            {% if name.writing_type %}
+            <span id="writing-badge">{{ name.writing_type.name|title }}</span>
+            {% endif %}
+            {% if name.completeness %}
+            <span id="completeness-badge">{{ name.completeness.name|title }}</span>
+            {% endif %}
+        </div>
+    </div>
+    {% if user.is_authenticated %}
+    <div class="detail-actions">
+        <button class="btn btn-secondary btn-sm" id="edit-name-btn" onclick="toggleNameEdit()">Edit</button>
+        <button class="btn btn-primary btn-sm" id="save-name-btn" onclick="saveName()" style="display: none;">Save</button>
+        <button class="btn btn-outline btn-sm" id="cancel-name-btn" onclick="cancelNameEdit()" style="display: none;">Cancel</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmDelete('name', {{ name.id }}, '{{ name.name|escapejs }}')">Delete</button>
+    </div>
+    {% endif %}
+</div>
+
+<div class="detail-section" id="details-section">
+    <h2>Details</h2>
+    <div class="detail-grid">
+        <div class="detail-item">
+            <div class="detail-item-label">Type</div>
+            <div class="detail-item-value">
+                <span id="type-display">{{ name.name_type.name|default:"—"|title }}</span>
+                {% if user.is_authenticated %}
+                <select id="type-input" class="inline-select" style="display: none;">
+                    <option value="">—</option>
+                    {% for t in name_types %}
+                    <option value="{{ t.id }}" {% if name.name_type_id == t.id %}selected{% endif %}>{{ t.name|title }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="detail-item">
+            <div class="detail-item-label">Writing Type</div>
+            <div class="detail-item-value">
+                <span id="writing-display">{{ name.writing_type.name|default:"—"|title }}</span>
+                {% if user.is_authenticated %}
+                <select id="writing-input" class="inline-select" style="display: none;">
+                    <option value="">—</option>
+                    {% for wt in writing_types %}
+                    <option value="{{ wt.id }}" {% if name.writing_type_id == wt.id %}selected{% endif %}>{{ wt.name|title }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="detail-item">
+            <div class="detail-item-label">Completeness</div>
+            <div class="detail-item-value">
+                <span id="completeness-display">{{ name.completeness.name|default:"—"|title }}</span>
+                {% if user.is_authenticated %}
+                <select id="completeness-input" class="inline-select" style="display: none;">
+                    <option value="">—</option>
+                    {% for ct in completeness_types %}
+                    <option value="{{ ct.id }}" {% if name.completeness_id == ct.id %}selected{% endif %}>{{ ct.name|title }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="detail-item">
+            <div class="detail-item-label">Milieu</div>
+            <div class="detail-item-value">
+                <span id="milieu-display">{{ name.milieu.name|default:"—" }}</span>
+                {% if user.is_authenticated %}
+                <select id="milieu-input" class="inline-select" style="display: none;">
+                    <option value="">—</option>
+                    {% for m in milieus %}
+                    <option value="{{ m.id }}" {% if name.milieu_id == m.id %}selected{% endif %}>{{ m.name }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="detail-item">
+            <div class="detail-item-label">Uncertain</div>
+            <div class="detail-item-value">
+                <span id="uncertain-display">{% if name.uncertain %}Yes{% else %}No{% endif %}</span>
+                {% if user.is_authenticated %}
+                <input type="checkbox" id="uncertain-input" class="inline-checkbox" {% if name.uncertain %}checked{% endif %} style="display: none;">
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if determinatives %}
+        <div class="detail-item">
+            <div class="detail-item-label">Determinatives</div>
+            <div class="detail-item-value">
+                {% for det in determinatives %}{{ det.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="detail-section">
+    <h2>Related Forms</h2>
+    <div class="detail-grid">
+        <div class="detail-item">
+            <div class="detail-item-label">Variant Forms</div>
+            <div class="detail-item-value">
+                <span id="variants-display">{{ name.variant_forms|default:"—"|safe }}</span>
+                {% if user.is_authenticated %}
+                <input type="text" id="variants-input" class="inline-input" value="{{ name.variant_forms|default:'' }}" style="display: none;">
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="detail-item">
+            <div class="detail-item-label">Correspondence</div>
+            <div class="detail-item-value">
+                <span id="correspondence-display">{{ name.correspondence|default:"—"|safe }}</span>
+                {% if user.is_authenticated %}
+                <input type="text" id="correspondence-input" class="inline-input" value="{{ name.correspondence|default:'' }}" style="display: none;">
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="detail-section">
+    <h2>Literature</h2>
+    <div id="literature-display">{{ name.literature|default:"—" }}</div>
+    {% if user.is_authenticated %}
+    <textarea id="literature-input" class="inline-textarea" style="display: none;">{{ name.literature|default:'' }}</textarea>
+    {% endif %}
+</div>
+
+<div class="detail-section collapsible-section">
+    <button class="collapsible-header active" onclick="toggleCollapsible(this)">
+        <div class="section-header-left">
+            <h2>Attestations (<span id="attestation-count">{{ instances.count }}</span>)</h2>
+        </div>
+        <div class="section-header-right">
+            {% if user.is_authenticated %}
+            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); showAddAttestation();" title="Add attestation">+ Add</button>
+            {% endif %}
+            {% if instances %}
+            <a href="{% url 'namefinder:export_name_csv' name.id %}" class="download-btn" title="Download attestations as CSV" onclick="event.stopPropagation();">
+                ⤓ CSV
+            </a>
+            {% endif %}
+            <span class="collapse-icon">▼</span>
+        </div>
+    </button>
+    <div class="collapsible-content">
+    
+    {% if user.is_authenticated %}
+    <!-- Add New Attestation Form (hidden by default) -->
+    <div id="add-attestation-form" class="inline-add-form" style="display: none;">
+        <h3>Add New Attestation</h3>
+        <div class="inline-form-grid">
+            <div class="form-group fragment-autocomplete-group">
+                <label>Fragment</label>
+                <input type="text" id="new-fragment-text" class="fragment-autocomplete" placeholder="Type to search (e.g., KUB 1.1)" autocomplete="off">
+                <input type="hidden" id="new-fragment-id">
+                <div id="new-fragment-dropdown" class="autocomplete-dropdown"></div>
+                <small class="form-hint">Type series name or number. New fragments will be created automatically.</small>
+            </div>
+            <div class="form-group">
+                <label>Line</label>
+                <input type="text" id="new-line" placeholder="e.g., obv. 5">
+            </div>
+            <div class="form-group">
+                <label>Spelling</label>
+                <input type="text" id="new-spelling" placeholder="Spelling variant">
+            </div>
+            <div class="form-group">
+                <label>Writing Type</label>
+                <select id="new-writing-type">
+                    <option value="">—</option>
+                    {% for wt in writing_types %}
+                    <option value="{{ wt.id }}">{{ wt.name|title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Determinative</label>
+                <select id="new-determinative">
+                    <option value="">—</option>
+                    {% for d in all_determinatives %}
+                    <option value="{{ d.id }}">{{ d.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Title/Epithet</label>
+                <input type="text" id="new-title-epithet" placeholder="Title or epithet">
+            </div>
+        </div>
+        <div class="inline-form-actions">
+            <button class="btn btn-primary btn-sm" onclick="saveNewAttestation()">Add Attestation</button>
+            <button class="btn btn-outline btn-sm" onclick="hideAddAttestation()">Cancel</button>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if instances %}
+    <table class="data-table" id="attestations-table">
+        <thead>
+            <tr>
+                <th>Fragment</th>
+                <th>Line</th>
+                <th>Spelling</th>
+                <th>Writing</th>
+                <th>Determinative</th>
+                <th>Title/Epithet</th>
+                <th>External</th>
+                {% if user.is_authenticated %}<th>Actions</th>{% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for instance in instances %}
+            <tr id="row-{{ instance.id }}" data-id="{{ instance.id }}">
+                <!-- Display Mode -->
+                <td class="display-cell">
+                    {% if instance.fragment %}
+                    <a href="{% url 'namefinder:fragment_detail' instance.fragment.id %}">{{ instance.fragment.series_fragment }}</a>
+                    {% else %}
+                    —
+                    {% endif %}
+                </td>
+                <td class="display-cell">{{ instance.line|default:"—" }}</td>
+                <td class="display-cell">{{ instance.spelling|default:"—"|safe }}</td>
+                <td class="display-cell">{{ instance.writing_type.name|default:"—" }}</td>
+                <td class="display-cell">{{ instance.determinative.name|default:"—" }}</td>
+                <td class="display-cell">{{ instance.title_epithet|default:"—" }}</td>
+                <td class="display-cell">
+                    {% if instance.fragment %}
+                    <a href="https://www.hethport.uni-wuerzburg.de/TLHdig/tlh_xtx.php?d={{ instance.fragment.series.name|urlencode }}%20{{ instance.fragment.fragment_number|urlencode }}" target="_blank" rel="noopener" class="tlhdig-link" title="View in TLHdig">TLH<sup>dig</sup></a>
+                    {% else %}
+                    —
+                    {% endif %}
+                </td>
+                {% if user.is_authenticated %}
+                <!-- Edit Mode (hidden) -->
+                <td class="edit-cell fragment-cell" style="display: none;">
+                    <div class="fragment-autocomplete-inline">
+                        <input type="text" class="edit-fragment-text inline-input-sm fragment-autocomplete" 
+                               value="{% if instance.fragment %}{{ instance.fragment.series.name }} {{ instance.fragment.fragment_number }}{% endif %}" 
+                               autocomplete="off">
+                        <input type="hidden" class="edit-fragment-id" value="{{ instance.fragment_id|default:'' }}">
+                        <div class="autocomplete-dropdown"></div>
+                    </div>
+                </td>
+                <td class="edit-cell" style="display: none;">
+                    <input type="text" class="edit-line inline-input-sm" value="{{ instance.line|default:'' }}">
+                </td>
+                <td class="edit-cell" style="display: none;">
+                    <input type="text" class="edit-spelling inline-input-sm" value="{{ instance.spelling|default:'' }}">
+                </td>
+                <td class="edit-cell" style="display: none;">
+                    <select class="edit-writing-type inline-select-sm">
+                        <option value="">—</option>
+                        {% for wt in writing_types %}
+                        <option value="{{ wt.id }}" {% if instance.writing_type_id == wt.id %}selected{% endif %}>{{ wt.name|title }}</option>
+                        {% endfor %}
+                    </select>
+                </td>
+                <td class="edit-cell" style="display: none;">
+                    <select class="edit-determinative inline-select-sm">
+                        <option value="">—</option>
+                        {% for d in all_determinatives %}
+                        <option value="{{ d.id }}" {% if instance.determinative_id == d.id %}selected{% endif %}>{{ d.name }}</option>
+                        {% endfor %}
+                    </select>
+                </td>
+                <td class="edit-cell" style="display: none;">
+                    <input type="text" class="edit-title-epithet inline-input-sm" value="{{ instance.title_epithet|default:'' }}">
+                </td>
+                <td class="edit-cell" style="display: none;">—</td>
+                
+                <!-- Actions Column -->
+                <td class="actions-cell">
+                    <button class="btn-icon edit-btn" onclick="toggleInstanceEdit({{ instance.id }})" title="Edit">✎</button>
+                    <button class="btn-icon save-btn" onclick="saveInstance({{ instance.id }})" title="Save" style="display: none;">✓</button>
+                    <button class="btn-icon cancel-btn" onclick="cancelInstanceEdit({{ instance.id }})" title="Cancel" style="display: none;">✕</button>
+                    <button class="btn-icon delete-btn" onclick="confirmDelete('instance', {{ instance.id }}, 'this attestation')" title="Delete">🗑</button>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="text-muted">No attestations recorded for this name.</p>
+    {% endif %}
+    </div>
+</div>
+
+{% if co_occurring_names %}
+<div class="detail-section collapsible-section">
+    <button class="collapsible-header" onclick="toggleCollapsible(this)">
+        <h2>Co-occurring Names ({{ co_occurring_names|length }})</h2>
+        <span class="collapse-icon">▼</span>
+    </button>
+    <div class="collapsible-content" style="display: none;">
+        <p class="text-muted" style="margin-bottom: 1rem;">Names that appear on the same fragments as {{ name.name|safe }}, sorted by frequency.</p>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Co-occurrences</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for coname in co_occurring_names %}
+                <tr>
+                    <td><a href="{% url 'namefinder:name_detail' coname.id %}">{{ coname.name|safe }}</a></td>
+                    <td>
+                        {% if coname.name_type %}
+                        <span class="name-type-badge {{ coname.name_type.name }}">{{ coname.name_type.name }}</span>
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
+                    <td>{{ coname.co_occurrence_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Delete Confirmation Modal -->
+<div id="delete-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3>Confirm Delete</h3>
+        <p>Are you sure you want to delete <strong id="delete-item-name"></strong>?</p>
+        <p class="text-muted">This action cannot be undone.</p>
+        <div class="modal-actions">
+            <button class="btn btn-danger" id="confirm-delete-btn">Delete</button>
+            <button class="btn btn-outline" onclick="hideDeleteModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- New Series Confirmation Modal -->
+<div id="series-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3>⚠️ New Series Detected</h3>
+        <p id="series-modal-message"></p>
+        <div id="similar-series-list"></div>
+        <div class="modal-actions">
+            <button class="btn btn-primary" id="confirm-series-btn">Create Anyway</button>
+            <button class="btn btn-outline" onclick="hideSeriesModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+{% if user.is_authenticated %}
+<script>
+const csrfToken = '{{ csrf_token }}';
+const nameId = {{ name.id }};
+
+// ============================================================================
+// Fragment Autocomplete System
+// ============================================================================
+let searchTimeout = null;
+let activeDropdown = null;
+let pendingFragmentData = null;
+
+// Initialize all autocomplete fields
+document.addEventListener('DOMContentLoaded', function() {
+    // Setup autocomplete for new attestation form
+    const newFragmentInput = document.getElementById('new-fragment-text');
+    if (newFragmentInput) {
+        setupFragmentAutocomplete(newFragmentInput, 'new-fragment-id', 'new-fragment-dropdown');
+    }
+    
+    // Setup autocomplete for inline edit fields (delegated)
+    document.addEventListener('input', function(e) {
+        if (e.target.classList.contains('edit-fragment-text')) {
+            const container = e.target.closest('.fragment-autocomplete-inline');
+            const hiddenInput = container.querySelector('.edit-fragment-id');
+            const dropdown = container.querySelector('.autocomplete-dropdown');
+            handleFragmentSearch(e.target, hiddenInput, dropdown);
+        }
+    });
+    
+    // Close dropdowns on outside click
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.fragment-autocomplete-group') && !e.target.closest('.fragment-autocomplete-inline')) {
+            document.querySelectorAll('.autocomplete-dropdown').forEach(d => d.style.display = 'none');
+        }
+    });
+});
+
+function setupFragmentAutocomplete(input, hiddenId, dropdownId) {
+    const hiddenInput = document.getElementById(hiddenId);
+    const dropdown = document.getElementById(dropdownId);
+    
+    input.addEventListener('input', () => handleFragmentSearch(input, hiddenInput, dropdown));
+    input.addEventListener('focus', () => {
+        if (input.value.length >= 1) handleFragmentSearch(input, hiddenInput, dropdown);
+    });
+}
+
+async function handleFragmentSearch(input, hiddenInput, dropdown) {
+    const query = input.value.trim();
+    
+    // Clear previous timeout
+    if (searchTimeout) clearTimeout(searchTimeout);
+    
+    // Clear hidden input when typing
+    hiddenInput.value = '';
+    
+    if (query.length < 1) {
+        dropdown.style.display = 'none';
+        return;
+    }
+    
+    // Debounce search
+    searchTimeout = setTimeout(async () => {
+        try {
+            const response = await fetch(`/api/fragment/search/?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            
+            renderDropdown(dropdown, input, hiddenInput, data.fragments, query);
+        } catch (err) {
+            console.error('Search error:', err);
+        }
+    }, 200);
+}
+
+function renderDropdown(dropdown, input, hiddenInput, fragments, query) {
+    dropdown.innerHTML = '';
+    
+    if (fragments.length > 0) {
+        fragments.forEach(f => {
+            const item = document.createElement('div');
+            item.className = 'autocomplete-item';
+            item.textContent = f.text;
+            item.onclick = () => selectFragment(input, hiddenInput, dropdown, f.id, f.text);
+            dropdown.appendChild(item);
+        });
+    }
+    
+    // Always show "Create new" option at the bottom
+    const createItem = document.createElement('div');
+    createItem.className = 'autocomplete-item autocomplete-create';
+    createItem.innerHTML = `<strong>+ Create:</strong> "${query}"`;
+    createItem.onclick = () => createNewFragment(input, hiddenInput, dropdown, query);
+    dropdown.appendChild(createItem);
+    
+    dropdown.style.display = 'block';
+    activeDropdown = dropdown;
+}
+
+function selectFragment(input, hiddenInput, dropdown, id, text) {
+    input.value = text;
+    hiddenInput.value = id;
+    dropdown.style.display = 'none';
+}
+
+async function createNewFragment(input, hiddenInput, dropdown, fragmentText) {
+    // Parse the fragment text (expect format: "SERIES NUMBER")
+    const parts = fragmentText.trim().split(/\s+/);
+    if (parts.length < 2) {
+        alert('Please enter fragment as "Series Number" (e.g., "KUB 1.1")');
+        return;
+    }
+    
+    const seriesName = parts.slice(0, -1).join(' ');
+    const fragmentNumber = parts[parts.length - 1];
+    
+    try {
+        const response = await fetch('/api/fragment/create/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                series_name: seriesName,
+                fragment_number: fragmentNumber
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.needs_confirmation) {
+            // Show confirmation modal for new series
+            pendingFragmentData = { input, hiddenInput, dropdown, seriesName, fragmentNumber };
+            showSeriesModal(result.message, result.similar_series);
+        } else if (result.success) {
+            selectFragment(input, hiddenInput, dropdown, result.id, result.text);
+            if (result.existing) {
+                // Fragment already existed
+            } else if (result.new_series) {
+                alert(`Created new fragment "${result.text}" with new series "${seriesName}"`);
+            }
+        } else {
+            alert('Error creating fragment: ' + result.error);
+        }
+    } catch (err) {
+        alert('Error creating fragment: ' + err.message);
+    }
+}
+
+function showSeriesModal(message, similarSeries) {
+    document.getElementById('series-modal-message').textContent = message;
+    
+    const listEl = document.getElementById('similar-series-list');
+    if (similarSeries && similarSeries.length > 0) {
+        listEl.innerHTML = '<p><strong>Did you mean:</strong></p><ul>' + 
+            similarSeries.map(s => `<li>${s}</li>`).join('') + '</ul>';
+    } else {
+        listEl.innerHTML = '<p class="text-muted">No similar series found.</p>';
+    }
+    
+    document.getElementById('series-modal').style.display = 'flex';
+}
+
+function hideSeriesModal() {
+    document.getElementById('series-modal').style.display = 'none';
+    pendingFragmentData = null;
+}
+
+document.getElementById('confirm-series-btn').addEventListener('click', async () => {
+    if (!pendingFragmentData) return;
+    
+    const { input, hiddenInput, dropdown, seriesName, fragmentNumber } = pendingFragmentData;
+    
+    try {
+        const response = await fetch('/api/fragment/create/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                series_name: seriesName,
+                fragment_number: fragmentNumber,
+                confirm_new_series: true
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            selectFragment(input, hiddenInput, dropdown, result.id, result.text);
+            hideSeriesModal();
+        } else {
+            alert('Error creating fragment: ' + result.error);
+        }
+    } catch (err) {
+        alert('Error creating fragment: ' + err.message);
+    }
+});
+
+// ============================================================================
+// Name Editing
+// ============================================================================
+function toggleNameEdit() {
+    const displays = ['name-display', 'type-display', 'writing-display', 'completeness-display', 
+                      'milieu-display', 'uncertain-display', 'variants-display', 
+                      'correspondence-display', 'literature-display'];
+    const inputs = ['name-input', 'type-input', 'writing-input', 'completeness-input', 
+                    'milieu-input', 'uncertain-input', 'variants-input', 
+                    'correspondence-input', 'literature-input'];
+    
+    displays.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+    inputs.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'inline-block';
+    });
+    
+    document.getElementById('edit-name-btn').style.display = 'none';
+    document.getElementById('save-name-btn').style.display = 'inline-block';
+    document.getElementById('cancel-name-btn').style.display = 'inline-block';
+}
+
+function cancelNameEdit() {
+    location.reload();
+}
+
+async function saveName() {
+    const data = {
+        name: document.getElementById('name-input').value,
+        name_type: document.getElementById('type-input').value || null,
+        writing_type: document.getElementById('writing-input').value || null,
+        completeness: document.getElementById('completeness-input').value || null,
+        milieu: document.getElementById('milieu-input').value || null,
+        uncertain: document.getElementById('uncertain-input').checked,
+        variant_forms: document.getElementById('variants-input').value,
+        correspondence: document.getElementById('correspondence-input').value,
+        literature: document.getElementById('literature-input').value
+    };
+    
+    try {
+        const response = await fetch(`/api/name/${nameId}/`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Error saving: ' + result.error);
+        }
+    } catch (err) {
+        alert('Error saving: ' + err.message);
+    }
+}
+
+// Instance editing
+function toggleInstanceEdit(id) {
+    const row = document.getElementById(`row-${id}`);
+    row.querySelectorAll('.display-cell').forEach(c => c.style.display = 'none');
+    row.querySelectorAll('.edit-cell').forEach(c => c.style.display = 'table-cell');
+    row.querySelector('.edit-btn').style.display = 'none';
+    row.querySelector('.delete-btn').style.display = 'none';
+    row.querySelector('.save-btn').style.display = 'inline-block';
+    row.querySelector('.cancel-btn').style.display = 'inline-block';
+}
+
+function cancelInstanceEdit(id) {
+    location.reload();
+}
+
+async function saveInstance(id) {
+    const row = document.getElementById(`row-${id}`);
+    const fragmentId = row.querySelector('.edit-fragment-id').value;
+    const fragmentText = row.querySelector('.edit-fragment-text').value.trim();
+    
+    // If there's text but no ID, try to create/find the fragment first
+    let finalFragmentId = fragmentId;
+    if (fragmentText && !fragmentId) {
+        finalFragmentId = await resolveFragment(fragmentText);
+        if (!finalFragmentId) return; // User cancelled or error
+    }
+    
+    const data = {
+        fragment: finalFragmentId || null,
+        line: row.querySelector('.edit-line').value,
+        spelling: row.querySelector('.edit-spelling').value,
+        writing_type: row.querySelector('.edit-writing-type').value || null,
+        determinative: row.querySelector('.edit-determinative').value || null,
+        title_epithet: row.querySelector('.edit-title-epithet').value
+    };
+    
+    try {
+        const response = await fetch(`/api/instance/${id}/`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Error saving: ' + result.error);
+        }
+    } catch (err) {
+        alert('Error saving: ' + err.message);
+    }
+}
+
+// Helper to resolve fragment text to ID (creating if needed)
+async function resolveFragment(fragmentText) {
+    const parts = fragmentText.trim().split(/\s+/);
+    if (parts.length < 2) {
+        alert('Please enter fragment as "Series Number" (e.g., "KUB 1.1")');
+        return null;
+    }
+    
+    const seriesName = parts.slice(0, -1).join(' ');
+    const fragmentNumber = parts[parts.length - 1];
+    
+    try {
+        const response = await fetch('/api/fragment/create/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                series_name: seriesName,
+                fragment_number: fragmentNumber
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.needs_confirmation) {
+            // New series detected - ask user
+            const similarMsg = result.similar_series.length > 0 
+                ? `\n\nDid you mean: ${result.similar_series.join(', ')}?`
+                : '';
+            
+            if (confirm(result.message + similarMsg + '\n\nClick OK to create the new series, or Cancel to go back.')) {
+                // Retry with confirmation
+                const confirmResponse = await fetch('/api/fragment/create/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        series_name: seriesName,
+                        fragment_number: fragmentNumber,
+                        confirm_new_series: true
+                    })
+                });
+                const confirmResult = await confirmResponse.json();
+                return confirmResult.success ? confirmResult.id : null;
+            }
+            return null;
+        } else if (result.success) {
+            return result.id;
+        } else {
+            alert('Error: ' + result.error);
+            return null;
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+        return null;
+    }
+}
+
+// Add attestation
+function showAddAttestation() {
+    document.getElementById('add-attestation-form').style.display = 'block';
+}
+
+function hideAddAttestation() {
+    document.getElementById('add-attestation-form').style.display = 'none';
+}
+
+async function saveNewAttestation() {
+    const fragmentId = document.getElementById('new-fragment-id').value;
+    const fragmentText = document.getElementById('new-fragment-text').value.trim();
+    
+    // If there's text but no ID, try to create/find the fragment first
+    let finalFragmentId = fragmentId;
+    if (fragmentText && !fragmentId) {
+        finalFragmentId = await resolveFragment(fragmentText);
+        if (!finalFragmentId) return; // User cancelled or error
+    }
+    
+    const data = {
+        name: nameId,
+        fragment: finalFragmentId || null,
+        line: document.getElementById('new-line').value,
+        spelling: document.getElementById('new-spelling').value,
+        writing_type: document.getElementById('new-writing-type').value || null,
+        determinative: document.getElementById('new-determinative').value || null,
+        title_epithet: document.getElementById('new-title-epithet').value
+    };
+    
+    try {
+        const response = await fetch('/api/instance/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Error adding attestation: ' + result.error);
+        }
+    } catch (err) {
+        alert('Error adding attestation: ' + err.message);
+    }
+}
+
+// Delete functionality
+let deleteType = '';
+let deleteId = 0;
+
+function confirmDelete(type, id, name) {
+    deleteType = type;
+    deleteId = id;
+    document.getElementById('delete-item-name').textContent = name;
+    document.getElementById('delete-modal').style.display = 'flex';
+}
+
+function hideDeleteModal() {
+    document.getElementById('delete-modal').style.display = 'none';
+}
+
+document.getElementById('confirm-delete-btn').addEventListener('click', async () => {
+    try {
+        const url = deleteType === 'name' 
+            ? `/api/name/${deleteId}/delete/`
+            : `/api/instance/${deleteId}/delete/`;
+        
+        const response = await fetch(url, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            if (deleteType === 'name') {
+                window.location.href = '{% url "namefinder:index" %}';
+            } else {
+                location.reload();
+            }
+        } else {
+            alert('Error deleting: ' + result.error);
+        }
+    } catch (err) {
+        alert('Error deleting: ' + err.message);
+    }
+});
+
+// Close modal on outside click
+document.getElementById('delete-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'delete-modal') {
+        hideDeleteModal();
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

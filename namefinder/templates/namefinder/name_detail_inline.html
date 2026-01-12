@@ -1,0 +1,627 @@
+{% extends 'namefinder/base.html' %}
+{% load static %}
+
+{% block title %}{{ name.name }} - LAMAN{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="{% url 'namefinder:index' %}">Search</a>
+    <span>›</span>
+    <span id="breadcrumb-name">{{ name.name|striptags }}</span>
+</div>
+
+<div class="detail-header">
+    <div class="detail-header-main">
+        <h1 class="detail-title">
+            <span class="display-mode">{{ name.name|safe }}</span>
+            {% if user.is_authenticated %}
+            <input type="text" class="edit-mode inline-input inline-input-large" name="name" value="{{ name.name }}" style="display:none;">
+            {% endif %}
+            {% if name.name_type.name == 'place' %}
+            <a href="https://www.hethport.uni-wuerzburg.de/HiTop/hetgeoitem.php?i={{ name.name|urlencode }}" target="_blank" rel="noopener" class="hitop-link" title="View in HiTop database">see at HiTop →</a>
+            {% endif %}
+        </h1>
+        <div class="detail-meta">
+            {% if name.name_type %}
+            <span class="name-type-badge {{ name.name_type.name }}">{{ name.name_type.name }}</span>
+            {% endif %}
+            {% if name.writing_type %}
+            <span class="display-mode">{{ name.writing_type.name|title }}</span>
+            {% endif %}
+            {% if name.completeness %}
+            <span class="display-mode">{{ name.completeness.name|title }}</span>
+            {% endif %}
+        </div>
+    </div>
+    {% if user.is_authenticated %}
+    <div class="detail-actions">
+        <button class="btn btn-secondary btn-sm" id="edit-name-btn" onclick="toggleNameEdit()">Edit</button>
+        <button class="btn btn-primary btn-sm edit-mode" id="save-name-btn" onclick="saveName()" style="display:none;">Save</button>
+        <button class="btn btn-secondary btn-sm edit-mode" onclick="cancelNameEdit()" style="display:none;">Cancel</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmDelete('name', {{ name.id }}, '{{ name.name|escapejs }}')">Delete</button>
+    </div>
+    {% endif %}
+</div>
+
+<div class="detail-section" id="name-details-section">
+    <div class="section-header">
+        <h2>Details</h2>
+    </div>
+    <div class="detail-grid" id="name-details-grid">
+        <div class="detail-item">
+            <div class="detail-item-label">Type</div>
+            <div class="detail-item-value">
+                <span class="display-mode">{{ name.name_type.name|default:"—"|title }}</span>
+                {% if user.is_authenticated %}
+                <select class="edit-mode inline-select" name="name_type" style="display:none;">
+                    <option value="">—</option>
+                    {% for type in name_types %}
+                    <option value="{{ type.id }}" {% if name.name_type.id == type.id %}selected{% endif %}>{{ type.name|title }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="detail-item">
+            <div class="detail-item-label">Writing Type</div>
+            <div class="detail-item-value">
+                <span class="display-mode">{{ name.writing_type.name|default:"—"|title }}</span>
+                {% if user.is_authenticated %}
+                <select class="edit-mode inline-select" name="writing_type" style="display:none;">
+                    <option value="">—</option>
+                    {% for type in writing_types %}
+                    <option value="{{ type.id }}" {% if name.writing_type.id == type.id %}selected{% endif %}>{{ type.name|title }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="detail-item">
+            <div class="detail-item-label">Completeness</div>
+            <div class="detail-item-value">
+                <span class="display-mode">{{ name.completeness.name|default:"—"|title }}</span>
+                {% if user.is_authenticated %}
+                <select class="edit-mode inline-select" name="completeness" style="display:none;">
+                    <option value="">—</option>
+                    {% for type in completeness_types %}
+                    <option value="{{ type.id }}" {% if name.completeness.id == type.id %}selected{% endif %}>{{ type.name|title }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="detail-item">
+            <div class="detail-item-label">Milieu</div>
+            <div class="detail-item-value">
+                <span class="display-mode">{{ name.milieu.name|default:"—" }}</span>
+                {% if user.is_authenticated %}
+                <select class="edit-mode inline-select" name="milieu" style="display:none;">
+                    <option value="">—</option>
+                    {% for m in milieus %}
+                    <option value="{{ m.id }}" {% if name.milieu.id == m.id %}selected{% endif %}>{{ m.name }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if determinatives or user.is_authenticated %}
+        <div class="detail-item">
+            <div class="detail-item-label">Determinatives</div>
+            <div class="detail-item-value">
+                <span class="display-mode">
+                    {% if determinatives %}
+                        {% for det in determinatives %}{{ det.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                    {% else %}
+                        —
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="detail-item">
+            <div class="detail-item-label">Uncertain</div>
+            <div class="detail-item-value">
+                <span class="display-mode">{% if name.uncertain %}Yes{% else %}No{% endif %}</span>
+                {% if user.is_authenticated %}
+                <label class="edit-mode inline-checkbox" style="display:none;">
+                    <input type="checkbox" name="uncertain" {% if name.uncertain %}checked{% endif %}> Uncertain
+                </label>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if name.variant_forms or name.correspondence or user.is_authenticated %}
+<div class="detail-section">
+    <h2>Related Forms</h2>
+    <div class="detail-grid">
+        <div class="detail-item">
+            <div class="detail-item-label">Variant Forms</div>
+            <div class="detail-item-value">
+                <span class="display-mode">{{ name.variant_forms|default:"—"|safe }}</span>
+                {% if user.is_authenticated %}
+                <textarea class="edit-mode inline-textarea" name="variant_forms" style="display:none;">{{ name.variant_forms|default:"" }}</textarea>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="detail-item">
+            <div class="detail-item-label">Correspondence</div>
+            <div class="detail-item-value">
+                <span class="display-mode">{{ name.correspondence|default:"—"|safe }}</span>
+                {% if user.is_authenticated %}
+                <textarea class="edit-mode inline-textarea" name="correspondence" style="display:none;">{{ name.correspondence|default:"" }}</textarea>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if name.literature or user.is_authenticated %}
+<div class="detail-section">
+    <h2>Literature</h2>
+    <p class="display-mode">{{ name.literature|default:"—" }}</p>
+    {% if user.is_authenticated %}
+    <textarea class="edit-mode inline-textarea" name="literature" style="display:none;">{{ name.literature|default:"" }}</textarea>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="detail-section collapsible-section">
+    <button class="collapsible-header active" onclick="toggleCollapsible(this)">
+        <div class="section-header-left">
+            <h2>Attestations (<span id="attestation-count">{{ instances.count }}</span>)</h2>
+        </div>
+        <div class="section-header-right">
+            {% if user.is_authenticated %}
+            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); showAddAttestation();" title="Add attestation">+ Add</button>
+            {% endif %}
+            {% if instances %}
+            <a href="{% url 'namefinder:export_name_csv' name.id %}" class="download-btn" title="Download attestations as CSV" onclick="event.stopPropagation();">
+                ⤓ CSV
+            </a>
+            {% endif %}
+            <span class="collapse-icon">▼</span>
+        </div>
+    </button>
+    <div class="collapsible-content">
+    
+    <!-- Add attestation form (hidden by default) -->
+    {% if user.is_authenticated %}
+    <div id="add-attestation-form" class="inline-form" style="display:none;">
+        <h3>Add New Attestation</h3>
+        <div class="inline-form-grid">
+            <div class="form-group">
+                <label>Fragment *</label>
+                <select name="new_fragment" class="inline-select" required>
+                    <option value="">Select fragment...</option>
+                    {% for fragment in all_fragments %}
+                    <option value="{{ fragment.id }}">{{ fragment.series_fragment }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Line</label>
+                <input type="text" name="new_line" class="inline-input" placeholder="e.g., obv. 5">
+            </div>
+            <div class="form-group">
+                <label>Spelling</label>
+                <input type="text" name="new_spelling" class="inline-input">
+            </div>
+            <div class="form-group">
+                <label>Writing Type</label>
+                <select name="new_writing_type" class="inline-select">
+                    <option value="">—</option>
+                    {% for type in writing_types %}
+                    <option value="{{ type.id }}">{{ type.name|title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Determinative</label>
+                <select name="new_determinative" class="inline-select">
+                    <option value="">—</option>
+                    {% for det in all_determinatives %}
+                    <option value="{{ det.id }}">{{ det.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Title/Epithet</label>
+                <input type="text" name="new_title_epithet" class="inline-input">
+            </div>
+        </div>
+        <div class="inline-form-actions">
+            <button class="btn btn-primary btn-sm" onclick="saveNewAttestation()">Save</button>
+            <button class="btn btn-secondary btn-sm" onclick="hideAddAttestation()">Cancel</button>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if instances %}
+    <table class="data-table" id="attestations-table">
+        <thead>
+            <tr>
+                <th>Fragment</th>
+                <th>Line</th>
+                <th>Spelling</th>
+                <th>Writing</th>
+                <th>Determinative</th>
+                <th>Title/Epithet</th>
+                <th>External</th>
+                {% if user.is_authenticated %}<th>Actions</th>{% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for instance in instances %}
+            <tr data-instance-id="{{ instance.id }}" id="instance-row-{{ instance.id }}">
+                <td>
+                    {% if instance.fragment %}
+                    <a href="{% url 'namefinder:fragment_detail' instance.fragment.id %}" class="display-mode">{{ instance.fragment.series_fragment }}</a>
+                    {% if user.is_authenticated %}
+                    <select class="edit-mode inline-select-sm" name="fragment_{{ instance.id }}" style="display:none;">
+                        {% for fragment in all_fragments %}
+                        <option value="{{ fragment.id }}" {% if instance.fragment.id == fragment.id %}selected{% endif %}>{{ fragment.series_fragment }}</option>
+                        {% endfor %}
+                    </select>
+                    {% endif %}
+                    {% else %}
+                    —
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="display-mode">{{ instance.line|default:"—" }}</span>
+                    {% if user.is_authenticated %}
+                    <input type="text" class="edit-mode inline-input-sm" name="line_{{ instance.id }}" value="{{ instance.line|default:"" }}" style="display:none;">
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="display-mode">{{ instance.spelling|default:"—"|safe }}</span>
+                    {% if user.is_authenticated %}
+                    <input type="text" class="edit-mode inline-input-sm" name="spelling_{{ instance.id }}" value="{{ instance.spelling|default:"" }}" style="display:none;">
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="display-mode">{{ instance.writing_type.name|default:"—" }}</span>
+                    {% if user.is_authenticated %}
+                    <select class="edit-mode inline-select-sm" name="writing_type_{{ instance.id }}" style="display:none;">
+                        <option value="">—</option>
+                        {% for type in writing_types %}
+                        <option value="{{ type.id }}" {% if instance.writing_type.id == type.id %}selected{% endif %}>{{ type.name }}</option>
+                        {% endfor %}
+                    </select>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="display-mode">{{ instance.determinative.name|default:"—" }}</span>
+                    {% if user.is_authenticated %}
+                    <select class="edit-mode inline-select-sm" name="determinative_{{ instance.id }}" style="display:none;">
+                        <option value="">—</option>
+                        {% for det in all_determinatives %}
+                        <option value="{{ det.id }}" {% if instance.determinative.id == det.id %}selected{% endif %}>{{ det.name }}</option>
+                        {% endfor %}
+                    </select>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="display-mode">{{ instance.title_epithet|default:"—" }}</span>
+                    {% if user.is_authenticated %}
+                    <input type="text" class="edit-mode inline-input-sm" name="title_epithet_{{ instance.id }}" value="{{ instance.title_epithet|default:"" }}" style="display:none;">
+                    {% endif %}
+                </td>
+                <td>
+                    {% if instance.fragment %}
+                    <a href="https://www.hethport.uni-wuerzburg.de/TLHdig/tlh_xtx.php?d={{ instance.fragment.series.name|urlencode }}%20{{ instance.fragment.fragment_number|urlencode }}" target="_blank" rel="noopener" class="tlhdig-link" title="View in TLHdig">TLH<sup>dig</sup></a>
+                    {% else %}
+                    —
+                    {% endif %}
+                </td>
+                {% if user.is_authenticated %}
+                <td class="actions-cell">
+                    <button class="btn-icon display-mode" onclick="toggleInstanceEdit({{ instance.id }})" title="Edit">✎</button>
+                    <button class="btn-icon edit-mode" onclick="saveInstance({{ instance.id }})" style="display:none;" title="Save">✓</button>
+                    <button class="btn-icon edit-mode" onclick="cancelInstanceEdit({{ instance.id }})" style="display:none;" title="Cancel">✕</button>
+                    <button class="btn-icon btn-icon-danger" onclick="confirmDelete('instance', {{ instance.id }}, 'this attestation')" title="Delete">🗑</button>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="text-muted">No attestations recorded for this name.</p>
+    {% endif %}
+    </div>
+</div>
+
+{% if co_occurring_names %}
+<div class="detail-section collapsible-section">
+    <button class="collapsible-header" onclick="toggleCollapsible(this)">
+        <h2>Co-occurring Names ({{ co_occurring_names|length }})</h2>
+        <span class="collapse-icon">▼</span>
+    </button>
+    <div class="collapsible-content" style="display: none;">
+        <p class="text-muted" style="margin-bottom: 1rem;">Names that appear on the same fragments as {{ name.name|safe }}, sorted by frequency.</p>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Co-occurrences</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for coname in co_occurring_names %}
+                <tr>
+                    <td><a href="{% url 'namefinder:name_detail' coname.id %}">{{ coname.name|safe }}</a></td>
+                    <td>
+                        {% if coname.name_type %}
+                        <span class="name-type-badge {{ coname.name_type.name }}">{{ coname.name_type.name }}</span>
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
+                    <td>{{ coname.co_occurrence_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Delete Confirmation Modal -->
+<div id="delete-modal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <h2>Confirm Delete</h2>
+        <p>Are you sure you want to delete <strong id="delete-item-name"></strong>?</p>
+        <p class="text-muted">This action cannot be undone.</p>
+        <div class="modal-actions">
+            <button class="btn btn-danger" id="confirm-delete-btn">Delete</button>
+            <button class="btn btn-secondary" onclick="hideDeleteModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const csrfToken = '{{ csrf_token }}';
+const nameId = {{ name.id }};
+let isNameEditing = false;
+let editingInstanceId = null;
+
+// Name editing functions
+function toggleNameEdit() {
+    isNameEditing = !isNameEditing;
+    document.querySelectorAll('#name-details-section .display-mode, .detail-header .display-mode, .detail-section .display-mode').forEach(el => {
+        if (!el.closest('#attestations-table') && !el.closest('.collapsible-content')) {
+            el.style.display = isNameEditing ? 'none' : '';
+        }
+    });
+    document.querySelectorAll('#name-details-section .edit-mode, .detail-header .edit-mode, .detail-section .edit-mode').forEach(el => {
+        if (!el.closest('#attestations-table') && !el.closest('.collapsible-content') && !el.closest('#add-attestation-form')) {
+            el.style.display = isNameEditing ? '' : 'none';
+        }
+    });
+    document.getElementById('edit-name-btn').style.display = isNameEditing ? 'none' : '';
+}
+
+function cancelNameEdit() {
+    location.reload();
+}
+
+async function saveName() {
+    const data = {
+        name: document.querySelector('input[name="name"]').value,
+        name_type: document.querySelector('select[name="name_type"]').value,
+        writing_type: document.querySelector('select[name="writing_type"]').value,
+        completeness: document.querySelector('select[name="completeness"]').value,
+        milieu: document.querySelector('select[name="milieu"]').value,
+        uncertain: document.querySelector('input[name="uncertain"]').checked,
+        variant_forms: document.querySelector('textarea[name="variant_forms"]')?.value || '',
+        correspondence: document.querySelector('textarea[name="correspondence"]')?.value || '',
+        literature: document.querySelector('textarea[name="literature"]')?.value || '',
+    };
+    
+    try {
+        const response = await fetch(`/api/name/${nameId}/`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify(data),
+        });
+        
+        if (response.ok) {
+            showMessage('Name updated successfully!', 'success');
+            location.reload();
+        } else {
+            const error = await response.json();
+            showMessage('Error: ' + (error.error || 'Failed to save'), 'error');
+        }
+    } catch (err) {
+        showMessage('Error saving name: ' + err.message, 'error');
+    }
+}
+
+// Instance editing functions
+function toggleInstanceEdit(instanceId) {
+    const row = document.getElementById(`instance-row-${instanceId}`);
+    row.querySelectorAll('.display-mode').forEach(el => el.style.display = 'none');
+    row.querySelectorAll('.edit-mode').forEach(el => el.style.display = '');
+    editingInstanceId = instanceId;
+}
+
+function cancelInstanceEdit(instanceId) {
+    const row = document.getElementById(`instance-row-${instanceId}`);
+    row.querySelectorAll('.display-mode').forEach(el => el.style.display = '');
+    row.querySelectorAll('.edit-mode').forEach(el => el.style.display = 'none');
+    editingInstanceId = null;
+}
+
+async function saveInstance(instanceId) {
+    const data = {
+        fragment: document.querySelector(`select[name="fragment_${instanceId}"]`).value,
+        line: document.querySelector(`input[name="line_${instanceId}"]`).value,
+        spelling: document.querySelector(`input[name="spelling_${instanceId}"]`).value,
+        writing_type: document.querySelector(`select[name="writing_type_${instanceId}"]`).value,
+        determinative: document.querySelector(`select[name="determinative_${instanceId}"]`).value,
+        title_epithet: document.querySelector(`input[name="title_epithet_${instanceId}"]`).value,
+    };
+    
+    try {
+        const response = await fetch(`/api/instance/${instanceId}/`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify(data),
+        });
+        
+        if (response.ok) {
+            showMessage('Attestation updated!', 'success');
+            location.reload();
+        } else {
+            const error = await response.json();
+            showMessage('Error: ' + (error.error || 'Failed to save'), 'error');
+        }
+    } catch (err) {
+        showMessage('Error: ' + err.message, 'error');
+    }
+}
+
+// Add attestation functions
+function showAddAttestation() {
+    document.getElementById('add-attestation-form').style.display = 'block';
+}
+
+function hideAddAttestation() {
+    document.getElementById('add-attestation-form').style.display = 'none';
+    // Clear form
+    document.querySelector('select[name="new_fragment"]').value = '';
+    document.querySelector('input[name="new_line"]').value = '';
+    document.querySelector('input[name="new_spelling"]').value = '';
+    document.querySelector('select[name="new_writing_type"]').value = '';
+    document.querySelector('select[name="new_determinative"]').value = '';
+    document.querySelector('input[name="new_title_epithet"]').value = '';
+}
+
+async function saveNewAttestation() {
+    const fragment = document.querySelector('select[name="new_fragment"]').value;
+    if (!fragment) {
+        showMessage('Please select a fragment', 'error');
+        return;
+    }
+    
+    const data = {
+        name: nameId,
+        fragment: fragment,
+        line: document.querySelector('input[name="new_line"]').value,
+        spelling: document.querySelector('input[name="new_spelling"]').value,
+        writing_type: document.querySelector('select[name="new_writing_type"]').value,
+        determinative: document.querySelector('select[name="new_determinative"]').value,
+        title_epithet: document.querySelector('input[name="new_title_epithet"]').value,
+    };
+    
+    try {
+        const response = await fetch('/api/instance/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify(data),
+        });
+        
+        if (response.ok) {
+            showMessage('Attestation added!', 'success');
+            location.reload();
+        } else {
+            const error = await response.json();
+            showMessage('Error: ' + (error.error || 'Failed to add'), 'error');
+        }
+    } catch (err) {
+        showMessage('Error: ' + err.message, 'error');
+    }
+}
+
+// Delete functions
+let deleteType = '';
+let deleteId = null;
+
+function confirmDelete(type, id, name) {
+    deleteType = type;
+    deleteId = id;
+    document.getElementById('delete-item-name').textContent = name;
+    document.getElementById('delete-modal').style.display = 'flex';
+}
+
+function hideDeleteModal() {
+    document.getElementById('delete-modal').style.display = 'none';
+    deleteType = '';
+    deleteId = null;
+}
+
+document.getElementById('confirm-delete-btn').addEventListener('click', async function() {
+    const url = deleteType === 'name' ? `/api/name/${deleteId}/` : `/api/instance/${deleteId}/`;
+    
+    try {
+        const response = await fetch(url, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': csrfToken,
+            },
+        });
+        
+        if (response.ok) {
+            if (deleteType === 'name') {
+                window.location.href = '{% url "namefinder:index" %}';
+            } else {
+                showMessage('Deleted successfully!', 'success');
+                document.getElementById(`instance-row-${deleteId}`).remove();
+                hideDeleteModal();
+                // Update count
+                const countEl = document.getElementById('attestation-count');
+                countEl.textContent = parseInt(countEl.textContent) - 1;
+            }
+        } else {
+            showMessage('Failed to delete', 'error');
+        }
+    } catch (err) {
+        showMessage('Error: ' + err.message, 'error');
+    }
+});
+
+function showMessage(text, type) {
+    const container = document.querySelector('.messages-container') || createMessagesContainer();
+    const msg = document.createElement('div');
+    msg.className = `message ${type}`;
+    msg.innerHTML = `${text}<button class="message-close" onclick="this.parentElement.remove()">×</button>`;
+    container.appendChild(msg);
+    setTimeout(() => msg.remove(), 5000);
+}
+
+function createMessagesContainer() {
+    const container = document.createElement('div');
+    container.className = 'messages-container';
+    document.querySelector('main').prepend(container);
+    return container;
+}
+
+// Close modal on outside click
+document.getElementById('delete-modal').addEventListener('click', function(e) {
+    if (e.target === this) hideDeleteModal();
+});
+</script>
+{% endblock %}

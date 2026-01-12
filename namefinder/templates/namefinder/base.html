@@ -1,0 +1,142 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}LAMAN - Hittite Names Database{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    {% block extra_css %}{% endblock %}
+    <script>
+        // Apply saved theme immediately to prevent flash
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo-section">
+                <a href="{% url 'namefinder:index' %}">
+                    <img src="{% static 'img/laman.png' %}" alt="LAMAN Logo" id="laman-logo">
+                </a>
+            </div>
+            <div class="header-right">
+                <button class="theme-toggle" id="theme-toggle" title="Toggle dark mode">
+                    <span class="icon" id="theme-icon">☽</span>
+                </button>
+                <div class="partner-logos">
+                    <img src="{% static 'img/logo Napoli.png' %}" alt="University of Naples Logo">
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <nav>
+        <ul class="nav-main">
+            <li><a href="{% url 'namefinder:index' %}" class="{% if request.resolver_match.url_name == 'index' %}active{% endif %}">Search Names</a></li>
+            <li><a href="{% url 'namefinder:fragment_search' %}" class="{% if request.resolver_match.url_name == 'fragment_search' or request.resolver_match.url_name == 'fragment_detail' %}active{% endif %}">Search Fragments</a></li>
+            <li><a href="{% url 'namefinder:network' %}" class="{% if request.resolver_match.url_name == 'network' %}active{% endif %}">Network</a></li>
+            <li><a href="{% url 'namefinder:about' %}" class="{% if request.resolver_match.url_name == 'about' %}active{% endif %}">About</a></li>
+            {% if user.is_authenticated %}
+            <li><a href="{% url 'namefinder:changes' %}" class="{% if request.resolver_match.url_name == 'changes' %}active{% endif %}">Changes</a></li>
+            {% endif %}
+        </ul>
+        <ul class="nav-auth">
+            {% if user.is_authenticated %}
+            <li class="user-info">{{ user.username }}</li>
+            <li><a href="{% url 'namefinder:name_create' %}" class="nav-btn">+ Add Name</a></li>
+            <li><a href="{% url 'namefinder:logout' %}" class="nav-btn nav-btn-secondary">Logout</a></li>
+            {% else %}
+            <li><a href="{% url 'namefinder:login' %}" class="nav-btn">Login</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    
+    <main>
+        {% if messages %}
+        <div class="messages-container">
+            {% for message in messages %}
+            <div class="message {{ message.tags }}">
+                {{ message }}
+                <button class="message-close" onclick="this.parentElement.remove()">×</button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+    
+    <footer>
+        <div class="footer-content">
+            <div class="footer-info">
+                <p>M. Ali Akman & Michele Cammarosano · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a></p>
+                <p>© 2024 University of Naples 'L'Orientale'</p>
+            </div>
+            <div class="footer-links">
+                <a href="{% url 'namefinder:about' %}">About</a>
+                <a href="{% url 'admin:index' %}">Admin</a>
+            </div>
+        </div>
+    </footer>
+    
+    <script>
+        // Dark mode toggle functionality
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const html = document.documentElement;
+        
+        function updateThemeUI(theme) {
+            if (theme === 'dark') {
+                themeIcon.textContent = '☀';
+            } else {
+                themeIcon.textContent = '☽';
+            }
+        }
+        
+        // Initialize UI based on current theme
+        updateThemeUI(html.getAttribute('data-theme'));
+        
+        themeToggle.addEventListener('click', function() {
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeUI(newTheme);
+        });
+        
+        // Collapsible section toggle
+        function toggleCollapsible(button) {
+            button.classList.toggle('active');
+            const content = button.nextElementSibling;
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+            } else {
+                content.style.display = 'none';
+            }
+        }
+        
+        // Message auto-dismiss
+        document.querySelectorAll('.message').forEach(function(message) {
+            setTimeout(function() {
+                message.style.opacity = '0';
+                message.style.transform = 'translateY(-10px)';
+                setTimeout(function() { message.remove(); }, 300);
+            }, 5000);
+            
+            const closeBtn = message.querySelector('.message-close');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function() {
+                    message.style.opacity = '0';
+                    message.style.transform = 'translateY(-10px)';
+                    setTimeout(function() { message.remove(); }, 300);
+                });
+            }
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,17 @@
+[Unit]
+Description=Gunicorn daemon for LAMAN
+Requires=gunicorn-laman.socket
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/laman
+ExecStart=/var/www/laman/venv/bin/gunicorn \
+          --access-logfile - \
+          --workers 3 \
+          --bind unix:/run/gunicorn/laman.sock \
+          laman.wsgi:application
+
+[Install]
+WantedBy=multi-user.target

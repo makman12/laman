@@ -1,0 +1,130 @@
+{% extends 'namefinder/base.html' %}
+{% load static %}
+
+{% block title %}About - LAMAN{% endblock %}
+
+{% block content %}
+<div class="detail-section">
+    <h1 class="page-title">About LAMAN</h1>
+    
+    <p>
+        <strong>LAMAN</strong>
+        is a searchable database of ancient Hittite names. The Hittites were an ancient Anatolian civilization 
+        (modern-day Turkey), and their names appear in cuneiform clay tablets dating back thousands of years.
+    </p>
+    
+    <p>
+        This database helps researchers find and study these names, providing detailed information about:
+    </p>
+    
+    <ul>
+        <li><strong>Divine Names (Deities)</strong> - Names of gods and goddesses</li>
+        <li><strong>Personal Names (People)</strong> - Names of individuals</li>
+        <li><strong>Geographical Names (Places)</strong> - Names of cities, mountains, and other locations</li>
+    </ul>
+</div>
+
+<div class="detail-section">
+    <h2>Features</h2>
+    
+    <div class="detail-grid">
+        <div class="detail-item">
+            <div class="detail-item-label">Smart Search</div>
+            <div class="detail-item-value">
+                Search doesn't differentiate between accents or special characters. 
+                Searching "kataha" finds "Kattaḫḫa".
+            </div>
+        </div>
+        
+        <div class="detail-item">
+            <div class="detail-item-label">Regex Support</div>
+            <div class="detail-item-value">
+                Use regular expressions for advanced searches. 
+                E.g., ^A.*li$ finds names starting with A and ending with "li".
+            </div>
+        </div>
+        
+        <div class="detail-item">
+            <div class="detail-item-label">Fragment Search</div>
+            <div class="detail-item-value">
+                Browse by publication series and fragment to see all names attested in specific tablets.
+            </div>
+        </div>
+        
+        <div class="detail-item">
+            <div class="detail-item-label">Detailed Attestations</div>
+            <div class="detail-item-value">
+                Each name includes detailed information about where it appears, including line numbers and spellings.
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="detail-section">
+    <h2>Database Statistics</h2>
+    
+    <div class="detail-grid">
+        <div class="detail-item">
+            <div class="detail-item-label">Total Names</div>
+            <div class="detail-item-value">{{ stats.names }}</div>
+        </div>
+        
+        <div class="detail-item">
+            <div class="detail-item-label">Total Attestations</div>
+            <div class="detail-item-value">{{ stats.instances }}</div>
+        </div>
+        
+        <div class="detail-item">
+            <div class="detail-item-label">Total Fragments</div>
+            <div class="detail-item-value">{{ stats.fragments }}</div>
+        </div>
+        
+        <div class="detail-item">
+            <div class="detail-item-label">Publication Series</div>
+            <div class="detail-item-value">{{ stats.series }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="detail-section">
+    <h2>Credits</h2>
+    
+    <p>
+        <strong>Developer:</strong> M. Ali Akman (Brown University)
+    </p>
+    <p>
+        <strong>Content/Research:</strong> Michele Cammarosano (University of Naples 'L'Orientale')
+    </p>
+    <p>
+        Part of the LAMAN project, building on earlier work by Eileen Xing and Hartmut Oertel 
+        from a DFG-funded project on Hittite cult inventories.
+    </p>
+</div>
+
+<div class="detail-section">
+    <h2>Acknowledgments</h2>
+    
+    <div class="acknowledgment-block">
+        <h3>Hittite Toponyms (HiTop)</h3>
+        <p>
+            All attestations of place names in LAMAN are from the 
+            <a href="https://www.hethport.uni-wuerzburg.de/HiTop/" target="_blank" rel="noopener"><strong>Hittite Toponyms (HiTop)</strong></a> 
+            database.
+        </p>
+        <p>
+            <strong>Citation:</strong> A. Kryszeń, hethiter.net/: HiTop (2023-04-28)
+        </p>
+        <p>
+            HiTop (Toponyme der Hethiter / Hittite Toponyms) was developed by <strong>Adam Kryszeń</strong> 
+            at the Freie Universität Berlin.
+        </p>
+        <p>
+            Since 2022, HiTop is supported by the National Science Centre grant OPUS 
+            "The City in Hittite Anatolia in the Light of the Cuneiform Sources" (UMO-2021/41/B/HS3/00661).
+        </p>
+        <p>
+            <strong>Contact:</strong> <a href="mailto:adam.kryszen@uw.edu.pl">adam.kryszen@uw.edu.pl</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+# Django
+Django==5.2.10
+
+# Database
+# SQLite is built-in, no extra package needed
+
+# Data processing
+pandas==2.3.3
+openpyxl==3.1.5
+numpy==2.4.1
+
+# Network analysis
+networkx==3.6.1
+python-louvain==0.16
+
+# Production server
+gunicorn==23.0.0
+
+# Static files serving (keeps static files with your project)
+whitenoise==6.8.2
+
+# Environment variables
+python-decouple==3.8

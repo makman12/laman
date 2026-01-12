@@ -1,0 +1,645 @@
+{% extends 'namefinder/base.html' %}
+{% load static %}
+
+{% block title %}Network Visualization - LAMAN{% endblock %}
+
+{% block content %}
+<div class="network-page" id="network-page">
+    <div class="network-sidebar" id="network-sidebar">
+        <h2>Network Builder</h2>
+        
+        <!-- Mode Tabs -->
+        <div class="mode-tabs">
+            <button class="mode-tab active" data-mode="ego" onclick="setMode('ego')">
+                🔍 Explore Names
+            </button>
+            <button class="mode-tab" data-mode="global" onclick="setMode('global')">
+                🌐 Global Network
+            </button>
+        </div>
+        
+        <!-- Ego Mode Panel -->
+        <div id="ego-panel" class="mode-panel active">
+            <div class="filter-section">
+                <h3>Select Names</h3>
+                <div class="ego-search-container">
+                    <input type="text" id="ego-search" placeholder="Type to search and add names..." autocomplete="off">
+                    <div id="ego-autocomplete" class="autocomplete-dropdown" style="display: none;"></div>
+                </div>
+                <div id="ego-selected-list" class="ego-selected-list"></div>
+                <p class="filter-hint">Add multiple names to explore their combined network.</p>
+            </div>
+            
+            <div class="filter-section">
+                <h3>Degree of Separation</h3>
+                <div class="degree-buttons">
+                    <button class="degree-btn active" data-degree="1" onclick="setDegree(1)">
+                        <strong>1</strong>
+                        <small>Direct</small>
+                    </button>
+                    <button class="degree-btn" data-degree="2" onclick="setDegree(2)">
+                        <strong>2</strong>
+                        <small>Extended</small>
+                    </button>
+                    <button class="degree-btn" data-degree="3" onclick="setDegree(3)">
+                        <strong>3</strong>
+                        <small>Wide</small>
+                    </button>
+                </div>
+                <p class="filter-hint">1 = names that co-occur directly with selected names</p>
+            </div>
+            
+            <div class="filter-section">
+                <h3>Limit by Series</h3>
+                <select id="ego-series-filter" multiple size="4" style="width: 100%;">
+                    {% for s in series_list %}
+                    <option value="{{ s.id }}">{{ s.name }} ({{ s.fragment_count }})</option>
+                    {% endfor %}
+                </select>
+                <p class="filter-hint">Optional. Ctrl+click to select multiple.</p>
+            </div>
+        </div>
+        
+        <!-- Global Mode Panel -->
+        <div id="global-panel" class="mode-panel">
+            <div class="filter-section">
+                <h3>Name Types</h3>
+                <div class="checkbox-group">
+                    {% for nt in name_types %}
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="name_type" value="{{ nt.id }}" checked>
+                        <span class="name-type-{{ nt.name|lower }}">{{ nt.name }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <div class="filter-section">
+                <h3>Series</h3>
+                <select id="series-filter" multiple size="4" style="width: 100%;">
+                    {% for s in series_list %}
+                    <option value="{{ s.id }}">{{ s.name }} ({{ s.fragment_count }})</option>
+                    {% endfor %}
+                </select>
+                <p class="filter-hint">Ctrl+click to select. Empty = all.</p>
+            </div>
+            
+            <div class="filter-section">
+                <h3>Connectivity Filter</h3>
+                <div class="range-group">
+                    <label>
+                        Min Connections
+                        <input type="number" id="min-connections" value="2" min="0" max="500">
+                    </label>
+                    <label>
+                        Max Connections
+                        <input type="number" id="max-connections" value="50" min="1" max="1000">
+                    </label>
+                </div>
+                <p class="filter-hint">Filter out very common names like "Ḫatti"</p>
+            </div>
+            
+            <div class="filter-section">
+                <h3>Min Attestations</h3>
+                <input type="number" id="min-attestations" value="2" min="1" max="100" style="width: 100%;">
+            </div>
+        </div>
+        
+        <button id="run-network" class="btn btn-primary btn-block">
+            ▶ Generate Network
+        </button>
+        
+        <div id="network-stats" class="network-stats" style="display: none;">
+            <p><strong>Nodes:</strong> <span id="stat-nodes">0</span></p>
+            <p><strong>Edges:</strong> <span id="stat-edges">0</span></p>
+            <p id="stat-communities-row" style="display: none;"><strong>Communities:</strong> <span id="stat-communities">0</span></p>
+        </div>
+        
+        <!-- Layout Settings (Collapsible) -->
+        <details class="settings-panel">
+            <summary>⚙️ Layout Settings</summary>
+            <div class="range-group">
+                <label>
+                    Link Distance: <span id="link-distance-val">80</span>
+                    <input type="range" id="link-distance" min="20" max="300" value="80">
+                </label>
+                <label>
+                    Repulsion: <span id="charge-val">-200</span>
+                    <input type="range" id="charge" min="-1000" max="-50" value="-200">
+                </label>
+                <label>
+                    Node Size: <span id="node-size-val">8</span>
+                    <input type="range" id="node-size" min="3" max="30" value="8">
+                </label>
+            </div>
+        </details>
+        
+        <!-- Display Options (Collapsible) -->
+        <details class="settings-panel">
+            <summary>🎨 Display Options</summary>
+            <div class="checkbox-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="show-labels" checked>
+                    Show Labels
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="size-by-connections" checked>
+                    Size by Connections
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="size-by-attestations">
+                    Size by Attestations
+                </label>
+            </div>
+            <hr style="margin: 0.75rem 0; border-color: var(--border-color);">
+            <h4 style="margin: 0 0 0.5rem 0; font-size: 0.85rem;">Color By</h4>
+            <div class="checkbox-group">
+                <label class="checkbox-label">
+                    <input type="radio" name="color-by" value="type" checked>
+                    Name Type
+                </label>
+                <label class="checkbox-label">
+                    <input type="radio" name="color-by" value="community">
+                    Community (Louvain)
+                </label>
+            </div>
+        </details>
+        
+        <!-- Legend -->
+        <div class="network-legend" id="type-legend">
+            <h4>Legend - Name Types</h4>
+            <div class="legend-item"><span class="legend-dot" style="background: #e74c3c;"></span> Selected (Center)</div>
+            <div class="legend-item"><span class="legend-dot" style="background: #3498db;"></span> Person</div>
+            <div class="legend-item"><span class="legend-dot" style="background: #9b59b6;"></span> Deity</div>
+            <div class="legend-item"><span class="legend-dot" style="background: #27ae60;"></span> Place</div>
+            <div class="legend-item"><span class="legend-dot" style="background: #95a5a6;"></span> Unknown</div>
+        </div>
+        <div class="network-legend" id="community-legend" style="display: none;">
+            <h4>Legend - Communities</h4>
+            <p class="filter-hint">Colors assigned automatically to detected clusters</p>
+            <div id="community-legend-items"></div>
+        </div>
+    </div>
+    
+    <div class="network-container" id="network-container">
+        <div class="network-toolbar">
+            <button id="fullscreen-btn" class="btn btn-sm btn-outline" title="Toggle Fullscreen">
+                ⛶ Fullscreen
+            </button>
+        </div>
+        <div id="network-loading" class="network-loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Building network...</p>
+        </div>
+        <div id="network-empty" class="network-empty">
+            <p>Select a <strong>mode</strong> and configure filters, then click <strong>Generate Network</strong>.</p>
+            <p class="text-muted">Names that appear together on the same fragments will be connected.</p>
+        </div>
+        <svg id="network-svg"></svg>
+        <div id="network-tooltip" class="network-tooltip"></div>
+    </div>
+</div>
+
+<!-- D3.js -->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+
+<script>
+const svg = d3.select('#network-svg');
+const container = document.getElementById('network-container');
+const networkPage = document.getElementById('network-page');
+let simulation = null;
+let currentData = null;
+let selectedEgoNames = []; // Array for multiple names
+let currentMode = 'ego';
+let selectedDegree = 1;
+
+// Color mapping - case insensitive for name types
+const typeColors = {
+    'person': '#3498db',
+    'deity': '#9b59b6',
+    'place': '#27ae60',
+    'unknown': '#95a5a6'
+};
+
+// Community colors - distinct palette for up to 20 communities
+const communityColors = [
+    '#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231',
+    '#911eb4', '#42d4f4', '#f032e6', '#bfef45', '#fabed4',
+    '#469990', '#dcbeff', '#9A6324', '#fffac8', '#800000',
+    '#aaffc3', '#808000', '#ffd8b1', '#000075', '#a9a9a9'
+];
+
+function getTypeColor(nameType) {
+    if (!nameType) return typeColors['unknown'];
+    const key = nameType.toLowerCase();
+    return typeColors[key] || typeColors['unknown'];
+}
+
+function getCommunityColor(communityId) {
+    if (communityId === undefined || communityId === null) return '#95a5a6';
+    return communityColors[communityId % communityColors.length];
+}
+
+function getColorByMode() {
+    return document.querySelector('input[name="color-by"]:checked')?.value || 'type';
+}
+
+function getNodeColor(d) {
+    if (d.is_ego) return '#e74c3c';
+    const colorMode = getColorByMode();
+    if (colorMode === 'community' && d.community !== undefined) {
+        return getCommunityColor(d.community);
+    }
+    return getTypeColor(d.name_type);
+}
+
+// Mode switching
+function setMode(mode) {
+    currentMode = mode;
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.mode-tab[data-mode="${mode}"]`).classList.add('active');
+    document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(`${mode}-panel`).classList.add('active');
+}
+
+// Degree selection
+function setDegree(degree) {
+    selectedDegree = degree;
+    document.querySelectorAll('.degree-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector(`.degree-btn[data-degree="${degree}"]`).classList.add('active');
+}
+
+// Ego name search - multiple selection
+const egoSearchInput = document.getElementById('ego-search');
+const egoAutocomplete = document.getElementById('ego-autocomplete');
+const egoSelectedList = document.getElementById('ego-selected-list');
+let searchTimeout = null;
+
+function renderSelectedNames() {
+    if (selectedEgoNames.length === 0) {
+        egoSelectedList.innerHTML = '';
+        return;
+    }
+    egoSelectedList.innerHTML = selectedEgoNames.map(n => `
+        <div class="ego-selected-item" data-id="${n.id}">
+            <span>${n.name}</span>
+            <button type="button" class="btn-clear" onclick="removeEgoName(${n.id})">✕</button>
+        </div>
+    `).join('');
+}
+
+egoSearchInput.addEventListener('input', (e) => {
+    const q = e.target.value.trim();
+    if (searchTimeout) clearTimeout(searchTimeout);
+    
+    if (q.length < 2) {
+        egoAutocomplete.style.display = 'none';
+        return;
+    }
+    
+    searchTimeout = setTimeout(async () => {
+        const response = await fetch(`/api/name/search/?q=${encodeURIComponent(q)}`);
+        const data = await response.json();
+        
+        // Filter out already selected names
+        const selectedIds = new Set(selectedEgoNames.map(n => n.id));
+        const filtered = data.results.filter(r => !selectedIds.has(r.id));
+        
+        if (filtered.length) {
+            egoAutocomplete.innerHTML = filtered.map(r => `
+                <div class="autocomplete-item" data-id="${r.id}" data-name="${r.name}" data-type="${r.name_type}">
+                    <span class="name-type-${r.name_type.toLowerCase()}">${r.name}</span>
+                    <small class="text-muted">(${r.name_type})</small>
+                </div>
+            `).join('');
+            egoAutocomplete.style.display = 'block';
+        } else if (data.results.length) {
+            egoAutocomplete.innerHTML = '<div class="autocomplete-item text-muted">Already selected</div>';
+            egoAutocomplete.style.display = 'block';
+        } else {
+            egoAutocomplete.innerHTML = '<div class="autocomplete-item text-muted">No results</div>';
+            egoAutocomplete.style.display = 'block';
+        }
+    }, 200);
+});
+
+egoAutocomplete.addEventListener('click', (e) => {
+    const item = e.target.closest('.autocomplete-item');
+    if (item && item.dataset.id) {
+        addEgoName(parseInt(item.dataset.id), item.dataset.name, item.dataset.type);
+    }
+});
+
+function addEgoName(id, name, type) {
+    if (!selectedEgoNames.find(n => n.id === id)) {
+        selectedEgoNames.push({ id, name, type });
+        renderSelectedNames();
+    }
+    egoSearchInput.value = '';
+    egoAutocomplete.style.display = 'none';
+}
+
+function removeEgoName(id) {
+    selectedEgoNames = selectedEgoNames.filter(n => n.id !== id);
+    renderSelectedNames();
+}
+
+function clearAllEgoNames() {
+    selectedEgoNames = [];
+    renderSelectedNames();
+}
+
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.ego-search-container')) {
+        egoAutocomplete.style.display = 'none';
+    }
+});
+
+// Fullscreen
+document.getElementById('fullscreen-btn').addEventListener('click', () => {
+    networkPage.classList.toggle('fullscreen');
+    setTimeout(() => {
+        if (currentData) {
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            svg.attr('width', width).attr('height', height);
+            if (simulation) {
+                simulation.force('center', d3.forceCenter(width / 2, height / 2));
+                simulation.alpha(0.3).restart();
+            }
+        }
+    }, 300);
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && networkPage.classList.contains('fullscreen')) {
+        networkPage.classList.remove('fullscreen');
+    }
+});
+
+// Fetch network data
+async function fetchNetworkData() {
+    const params = new URLSearchParams();
+    
+    // Always request community detection if coloring by community
+    const colorMode = getColorByMode();
+    if (colorMode === 'community') {
+        params.append('communities', 'true');
+    }
+    
+    if (currentMode === 'ego') {
+        if (selectedEgoNames.length === 0) {
+            alert('Please select at least one name');
+            return null;
+        }
+        // Send multiple ego names
+        selectedEgoNames.forEach(n => params.append('ego_name', n.id));
+        params.append('ego_degree', selectedDegree);
+        
+        const seriesIds = Array.from(document.getElementById('ego-series-filter').selectedOptions)
+            .map(opt => opt.value);
+        seriesIds.forEach(s => params.append('series', s));
+    } else {
+        const nameTypes = Array.from(document.querySelectorAll('input[name="name_type"]:checked'))
+            .map(cb => cb.value);
+        const seriesIds = Array.from(document.getElementById('series-filter').selectedOptions)
+            .map(opt => opt.value);
+        
+        nameTypes.forEach(t => params.append('name_type', t));
+        seriesIds.forEach(s => params.append('series', s));
+        params.append('min_connections', document.getElementById('min-connections').value);
+        params.append('max_connections', document.getElementById('max-connections').value);
+        params.append('min_attestations', document.getElementById('min-attestations').value);
+    }
+    
+    const response = await fetch(`/api/network/?${params}`);
+    return await response.json();
+}
+
+// Update legend based on color mode
+function updateLegend(data) {
+    const colorMode = getColorByMode();
+    const typeLegend = document.getElementById('type-legend');
+    const communityLegend = document.getElementById('community-legend');
+    
+    if (colorMode === 'community') {
+        typeLegend.style.display = 'none';
+        communityLegend.style.display = 'block';
+        
+        // Build community legend dynamically
+        const communities = new Set(data.nodes.map(n => n.community).filter(c => c !== undefined));
+        const legendItems = document.getElementById('community-legend-items');
+        legendItems.innerHTML = Array.from(communities).sort((a, b) => a - b).map(c => `
+            <div class="legend-item">
+                <span class="legend-dot" style="background: ${getCommunityColor(c)};"></span>
+                Community ${c + 1}
+            </div>
+        `).join('');
+        
+        // Show community count
+        if (data.stats.num_communities > 0) {
+            document.getElementById('stat-communities-row').style.display = 'block';
+            document.getElementById('stat-communities').textContent = data.stats.num_communities;
+        }
+    } else {
+        typeLegend.style.display = 'block';
+        communityLegend.style.display = 'none';
+        document.getElementById('stat-communities-row').style.display = 'none';
+    }
+}
+
+// Render network
+function renderNetwork(data) {
+    currentData = data;
+    svg.selectAll('*').remove();
+    
+    if (!data.nodes.length) {
+        document.getElementById('network-empty').style.display = 'flex';
+        document.getElementById('network-empty').innerHTML = '<p>No connections found. Try different filters.</p>';
+        return;
+    }
+    
+    document.getElementById('network-empty').style.display = 'none';
+    document.getElementById('network-stats').style.display = 'block';
+    document.getElementById('stat-nodes').textContent = data.stats.total_nodes;
+    document.getElementById('stat-edges').textContent = data.stats.total_edges;
+    
+    // Update legend based on color mode
+    updateLegend(data);
+    
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    svg.attr('width', width).attr('height', height);
+    
+    const nodeById = new Map(data.nodes.map(d => [d.id, d]));
+    const links = data.edges.map(e => ({
+        source: nodeById.get(e.source),
+        target: nodeById.get(e.target),
+        weight: e.weight
+    })).filter(l => l.source && l.target);
+    
+    const linkDistance = +document.getElementById('link-distance').value;
+    const chargeStrength = +document.getElementById('charge').value;
+    const baseNodeSize = +document.getElementById('node-size').value;
+    const sizeByConnections = document.getElementById('size-by-connections').checked;
+    const sizeByAttestations = document.getElementById('size-by-attestations').checked;
+    
+    const maxConnections = Math.max(...data.nodes.map(n => n.connections), 1);
+    const maxAttestations = Math.max(...data.nodes.map(n => n.attestations), 1);
+    
+    function getNodeSize(d) {
+        let size = baseNodeSize;
+        if (sizeByConnections) {
+            size = baseNodeSize + (d.connections / maxConnections) * baseNodeSize * 2;
+        } else if (sizeByAttestations) {
+            size = baseNodeSize + (d.attestations / maxAttestations) * baseNodeSize * 2;
+        }
+        if (d.is_ego) size *= 1.5;
+        return size;
+    }
+    
+    simulation = d3.forceSimulation(data.nodes)
+        .force('link', d3.forceLink(links).id(d => d.id).distance(linkDistance))
+        .force('charge', d3.forceManyBody().strength(chargeStrength))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide().radius(d => getNodeSize(d) + 5));
+    
+    const g = svg.append('g');
+    
+    svg.call(d3.zoom()
+        .scaleExtent([0.1, 10])
+        .on('zoom', (event) => g.attr('transform', event.transform)));
+    
+    const maxWeight = Math.max(...links.map(l => l.weight), 1);
+    const strokeScale = d3.scaleLinear().domain([1, maxWeight]).range([0.5, 4]);
+    
+    const link = g.append('g').attr('class', 'links')
+        .selectAll('line').data(links).enter().append('line')
+        .attr('stroke', 'var(--border-color)')
+        .attr('stroke-opacity', 0.6)
+        .attr('stroke-width', d => strokeScale(d.weight));
+    
+    const node = g.append('g').attr('class', 'nodes')
+        .selectAll('circle').data(data.nodes).enter().append('circle')
+        .attr('r', getNodeSize)
+        .attr('fill', d => getNodeColor(d))
+        .attr('stroke', '#fff')
+        .attr('stroke-width', d => d.is_ego ? 3 : 1.5)
+        .style('cursor', 'pointer')
+        .call(d3.drag()
+            .on('start', (e, d) => { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+            .on('drag', (e, d) => { d.fx = e.x; d.fy = e.y; })
+            .on('end', (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }));
+    
+    const tooltip = d3.select('#network-tooltip');
+    
+    node.on('mouseover', (event, d) => {
+        let html = `<strong>${d.name}</strong>${d.is_ego ? ' <span style="color:#e74c3c">(center)</span>' : ''}<br>
+            Type: ${d.name_type}<br>
+            Connections: ${d.connections}<br>
+            Attestations: ${d.attestations}`;
+        if (d.community !== undefined) {
+            html += `<br>Community: ${d.community + 1}`;
+        }
+        tooltip.style('display', 'block').html(html);
+    })
+    .on('mousemove', (event) => {
+        tooltip.style('left', (event.pageX + 10) + 'px').style('top', (event.pageY - 10) + 'px');
+    })
+    .on('mouseout', () => tooltip.style('display', 'none'))
+    .on('click', (event, d) => window.open(`/name/${d.id}/`, '_blank'));
+    
+    const showLabels = document.getElementById('show-labels').checked;
+    const labels = g.append('g').attr('class', 'labels')
+        .selectAll('text').data(data.nodes).enter().append('text')
+        .text(d => d.name)
+        .attr('font-size', d => d.is_ego ? '12px' : '10px')
+        .attr('font-weight', d => d.is_ego ? 'bold' : 'normal')
+        .attr('fill', 'var(--text-color)')
+        .attr('dx', d => getNodeSize(d) + 3)
+        .attr('dy', 3)
+        .style('pointer-events', 'none')
+        .style('display', showLabels ? 'block' : 'none');
+    
+    simulation.on('tick', () => {
+        link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+            .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+        node.attr('cx', d => d.x).attr('cy', d => d.y);
+        labels.attr('x', d => d.x).attr('y', d => d.y);
+    });
+}
+
+// Event listeners
+document.getElementById('run-network').addEventListener('click', async () => {
+    document.getElementById('network-loading').style.display = 'flex';
+    document.getElementById('network-empty').style.display = 'none';
+    
+    try {
+        const data = await fetchNetworkData();
+        if (data) renderNetwork(data);
+    } catch (err) {
+        console.error('Error:', err);
+        alert('Error loading network');
+    } finally {
+        document.getElementById('network-loading').style.display = 'none';
+    }
+});
+
+// Color mode change - re-fetch if switching to community mode
+document.querySelectorAll('input[name="color-by"]').forEach(radio => {
+    radio.addEventListener('change', async (e) => {
+        if (currentData) {
+            // If switching to community and no community data, re-fetch
+            const hasCommunityData = currentData.nodes.some(n => n.community !== undefined);
+            if (e.target.value === 'community' && !hasCommunityData) {
+                document.getElementById('network-loading').style.display = 'flex';
+                try {
+                    const data = await fetchNetworkData();
+                    if (data) renderNetwork(data);
+                } finally {
+                    document.getElementById('network-loading').style.display = 'none';
+                }
+            } else {
+                // Just re-render with existing data
+                renderNetwork(currentData);
+            }
+        }
+    });
+});
+
+['link-distance', 'charge', 'node-size'].forEach(id => {
+    const input = document.getElementById(id);
+    const valSpan = document.getElementById(id + '-val');
+    input.addEventListener('input', () => {
+        valSpan.textContent = input.value;
+        if (currentData) renderNetwork(currentData);
+    });
+});
+
+document.getElementById('show-labels').addEventListener('change', (e) => {
+    svg.selectAll('.labels text').style('display', e.target.checked ? 'block' : 'none');
+});
+
+['size-by-connections', 'size-by-attestations'].forEach(id => {
+    document.getElementById(id).addEventListener('change', (e) => {
+        if (e.target.checked) {
+            const other = id === 'size-by-connections' ? 'size-by-attestations' : 'size-by-connections';
+            document.getElementById(other).checked = false;
+        }
+        if (currentData) renderNetwork(currentData);
+    });
+});
+
+window.addEventListener('resize', () => {
+    if (currentData) {
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        svg.attr('width', width).attr('height', height);
+        if (simulation) {
+            simulation.force('center', d3.forceCenter(width / 2, height / 2));
+            simulation.alpha(0.3).restart();
+        }
+    }
+});
+</script>
+{% endblock %}

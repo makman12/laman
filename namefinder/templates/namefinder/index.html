@@ -1,0 +1,128 @@
+{% extends 'namefinder/base.html' %}
+{% load static %}
+
+{% block title %}Search Names - LAMAN{% endblock %}
+
+{% block content %}
+<div class="search-section">
+    <h2 class="page-title">Search Names</h2>
+    
+    <form method="get" action="{% url 'namefinder:index' %}" class="search-form">
+        <div class="search-row">
+            <div class="search-input-group" style="flex: 2;">
+                <label for="q">Search Query</label>
+                <input type="text" id="q" name="q" class="search-input" 
+                       value="{{ query }}" 
+                       placeholder="Enter name to search (e.g., Kattaḫḫa)">
+            </div>
+            <div class="search-checkbox">
+                <input type="checkbox" id="regex" name="regex" value="1" {% if use_regex %}checked{% endif %}>
+                <label for="regex">Use Regex</label>
+            </div>
+            <button type="submit" class="search-btn">Search</button>
+        </div>
+        
+        <div class="filters-section">
+            <div class="filter-group">
+                <label for="name_type">Name Type</label>
+                <select id="name_type" name="name_type" class="filter-select">
+                    <option value="">All Types</option>
+                    {% for type in name_types %}
+                    <option value="{{ type.id }}" {% if selected_name_type == type.id|stringformat:"s" %}selected{% endif %}>
+                        {{ type.name|title }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="writing_type">Writing Type</label>
+                <select id="writing_type" name="writing_type" class="filter-select">
+                    <option value="">All Writing Types</option>
+                    {% for type in writing_types %}
+                    <option value="{{ type.id }}" {% if selected_writing_type == type.id|stringformat:"s" %}selected{% endif %}>
+                        {{ type.name|title }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="completeness">Completeness</label>
+                <select id="completeness" name="completeness" class="filter-select">
+                    <option value="">All</option>
+                    {% for type in completeness_types %}
+                    <option value="{{ type.id }}" {% if selected_completeness == type.id|stringformat:"s" %}selected{% endif %}>
+                        {{ type.name|title }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="milieu">Milieu</label>
+                <select id="milieu" name="milieu" class="filter-select">
+                    <option value="">All Milieus</option>
+                    {% for m in milieus %}
+                    <option value="{{ m.id }}" {% if selected_milieu == m.id|stringformat:"s" %}selected{% endif %}>
+                        {{ m.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </form>
+</div>
+
+{% if names %}
+<div class="results-section">
+    <div class="results-header">
+        <p class="results-count">
+            Found {{ page_obj.paginator.count }} name{{ page_obj.paginator.count|pluralize }} 
+            {% if query %}for "{{ query }}"{% endif %}
+        </p>
+        <a href="{% url 'namefinder:export_search_csv' %}?{% if query %}q={{ query }}&{% endif %}{% if use_regex %}regex=1&{% endif %}{% if selected_name_type %}name_type={{ selected_name_type }}&{% endif %}{% if selected_writing_type %}writing_type={{ selected_writing_type }}&{% endif %}{% if selected_completeness %}completeness={{ selected_completeness }}&{% endif %}{% if selected_milieu %}milieu={{ selected_milieu }}{% endif %}" class="download-btn" title="Download results as CSV">
+            ⤓ Download CSV
+        </a>
+    </div>
+    
+    <div class="results-grid">
+        {% for name in names %}
+        <a href="{% url 'namefinder:name_detail' name.id %}" class="name-card {% if name.name_type %}{{ name.name_type.name }}{% endif %}">
+            <div class="name-card-title">{{ name.name|safe }}</div>
+            <div class="name-card-meta">
+                {% if name.name_type %}
+                <span class="name-type-badge {{ name.name_type.name }}">{{ name.name_type.name }}</span>
+                {% endif %}
+                {% if name.writing_type %}
+                · {{ name.writing_type.name }}
+                {% endif %}
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="pagination">
+        {% if page_obj.has_previous %}
+        <a href="?{% if query %}q={{ query }}&{% endif %}{% if use_regex %}regex=1&{% endif %}{% if selected_name_type %}name_type={{ selected_name_type }}&{% endif %}{% if selected_writing_type %}writing_type={{ selected_writing_type }}&{% endif %}{% if selected_completeness %}completeness={{ selected_completeness }}&{% endif %}{% if selected_milieu %}milieu={{ selected_milieu }}&{% endif %}page=1">&laquo; First</a>
+        <a href="?{% if query %}q={{ query }}&{% endif %}{% if use_regex %}regex=1&{% endif %}{% if selected_name_type %}name_type={{ selected_name_type }}&{% endif %}{% if selected_writing_type %}writing_type={{ selected_writing_type }}&{% endif %}{% if selected_completeness %}completeness={{ selected_completeness }}&{% endif %}{% if selected_milieu %}milieu={{ selected_milieu }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+        {% endif %}
+        
+        <span class="current">
+            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        </span>
+        
+        {% if page_obj.has_next %}
+        <a href="?{% if query %}q={{ query }}&{% endif %}{% if use_regex %}regex=1&{% endif %}{% if selected_name_type %}name_type={{ selected_name_type }}&{% endif %}{% if selected_writing_type %}writing_type={{ selected_writing_type }}&{% endif %}{% if selected_completeness %}completeness={{ selected_completeness }}&{% endif %}{% if selected_milieu %}milieu={{ selected_milieu }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+        <a href="?{% if query %}q={{ query }}&{% endif %}{% if use_regex %}regex=1&{% endif %}{% if selected_name_type %}name_type={{ selected_name_type }}&{% endif %}{% if selected_writing_type %}writing_type={{ selected_writing_type }}&{% endif %}{% if selected_completeness %}completeness={{ selected_completeness }}&{% endif %}{% if selected_milieu %}milieu={{ selected_milieu }}&{% endif %}page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% elif query %}
+<div class="results-section">
+    <p class="text-muted">No names found matching your search criteria.</p>
+</div>
+{% endif %}
+{% endblock %}

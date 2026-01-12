@@ -1,0 +1,41 @@
+{% extends 'namefinder/base.html' %}
+{% load static %}
+
+{% block title %}Delete {{ object_type }} - LAMAN{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="delete-confirm">
+        <h1 class="page-title">Delete {{ object_type }}</h1>
+        
+        <div class="delete-warning">
+            <p class="warning-icon">⚠</p>
+            <p>Are you sure you want to delete this {{ object_type|lower }}?</p>
+            <p class="delete-object-name">
+                {% if object_type == 'Name' %}
+                {{ object.name|safe }}
+                {% elif object_type == 'Fragment' %}
+                {{ object.series_fragment }}
+                {% elif object_type == 'Attestation' %}
+                {{ object.name.name|safe }} in {{ object.fragment.series_fragment }}
+                {% else %}
+                {{ object }}
+                {% endif %}
+            </p>
+            <p class="warning-text">This action cannot be undone.</p>
+        </div>
+        
+        <form method="post" class="delete-form">
+            {% csrf_token %}
+            <div class="form-actions">
+                <button type="submit" class="btn btn-danger">Yes, Delete</button>
+                {% if cancel_pk %}
+                <a href="{% url cancel_url cancel_pk %}" class="btn btn-secondary">Cancel</a>
+                {% else %}
+                <a href="{% url cancel_url object.pk %}" class="btn btn-secondary">Cancel</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

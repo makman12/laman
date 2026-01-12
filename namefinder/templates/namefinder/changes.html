@@ -1,0 +1,225 @@
+{% extends 'namefinder/base.html' %}
+{% load static %}
+
+{% block title %}Changes - LAMAN{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Database Changes</h1>
+    <p class="text-muted">Track all modifications made to the database</p>
+</div>
+
+<!-- Filters -->
+<div class="filter-section">
+    <form method="get" class="filter-form">
+        <div class="filter-group">
+            <label for="action">Action</label>
+            <select name="action" id="action">
+                <option value="">All Actions</option>
+                <option value="create" {% if action_filter == 'create' %}selected{% endif %}>Created</option>
+                <option value="update" {% if action_filter == 'update' %}selected{% endif %}>Updated</option>
+                <option value="delete" {% if action_filter == 'delete' %}selected{% endif %}>Deleted</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="model">Type</label>
+            <select name="model" id="model">
+                <option value="">All Types</option>
+                <option value="name" {% if model_filter == 'name' %}selected{% endif %}>Name</option>
+                <option value="fragment" {% if model_filter == 'fragment' %}selected{% endif %}>Fragment</option>
+                <option value="instance" {% if model_filter == 'instance' %}selected{% endif %}>Attestation</option>
+                <option value="series" {% if model_filter == 'series' %}selected{% endif %}>Series</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="user">User</label>
+            <input type="text" name="user" id="user" value="{{ user_filter }}" placeholder="Username">
+        </div>
+        <button type="submit" class="btn btn-primary">Filter</button>
+        {% if action_filter or model_filter or user_filter %}
+        <a href="{% url 'namefinder:changes' %}" class="btn btn-outline">Clear</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Results count -->
+<p class="results-count">
+    Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ page_obj.paginator.count }} changes
+</p>
+
+<!-- Changes table -->
+{% if changes %}
+<table class="data-table changes-table">
+    <thead>
+        <tr>
+            <th>Time</th>
+            <th>User</th>
+            <th>Action</th>
+            <th>Type</th>
+            <th>Item</th>
+            <th>Details</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for change in changes %}
+        <tr class="{% if change.reverted %}reverted{% endif %}">
+            <td class="timestamp-cell">
+                <span class="date">{{ change.timestamp|date:"Y-m-d" }}</span>
+                <span class="time">{{ change.timestamp|time:"H:i" }}</span>
+            </td>
+            <td>{{ change.user.username|default:"Unknown" }}</td>
+            <td>
+                <span class="action-badge action-{{ change.action }}">{{ change.get_action_display }}</span>
+            </td>
+            <td>{{ change.get_model_type_display }}</td>
+            <td class="item-cell">{{ change.object_repr|truncatechars:50 }}</td>
+            <td class="details-cell">
+                {% if change.change_summary %}
+                <span class="change-summary" title="{{ change.change_summary }}">
+                    {{ change.change_summary|truncatechars:60 }}
+                </span>
+                {% else %}
+                <span class="text-muted">—</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if change.reverted %}
+                <span class="status-badge reverted" title="Reverted by {{ change.reverted_by.username }} at {{ change.reverted_at|date:'Y-m-d H:i' }}">
+                    Reverted
+                </span>
+                {% else %}
+                <span class="status-badge active">Active</span>
+                {% endif %}
+            </td>
+            <td class="actions-cell">
+                {% if not change.reverted %}
+                <button class="btn btn-sm btn-outline" data-id="{{ change.id }}" onclick="showChangeDetails(this.dataset.id)" title="View details">
+                    👁
+                </button>
+                <button class="btn btn-sm btn-warning" data-id="{{ change.id }}" data-desc="{{ change.get_action_display }} {{ change.object_repr|truncatechars:30 }}" onclick="confirmRevert(this)" title="Revert this change">
+                    ↩ Revert
+                </button>
+                {% else %}
+                <span class="text-muted">—</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Pagination -->
+{% if page_obj.has_other_pages %}
+<div class="pagination">
+    {% if page_obj.has_previous %}
+    <a href="?page={{ page_obj.previous_page_number }}{% if action_filter %}&action={{ action_filter }}{% endif %}{% if model_filter %}&model={{ model_filter }}{% endif %}{% if user_filter %}&user={{ user_filter }}{% endif %}" class="page-link">« Previous</a>
+    {% endif %}
+    
+    <span class="page-info">
+        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+    </span>
+    
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}{% if action_filter %}&action={{ action_filter }}{% endif %}{% if model_filter %}&model={{ model_filter }}{% endif %}{% if user_filter %}&user={{ user_filter }}{% endif %}" class="page-link">Next »</a>
+    {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+    <p>No changes found{% if action_filter or model_filter or user_filter %} matching your filters{% endif %}.</p>
+</div>
+{% endif %}
+
+<!-- Change Details Modal -->
+<div id="details-modal" class="modal" style="display: none;">
+    <div class="modal-content modal-lg">
+        <h3>Change Details</h3>
+        <div id="details-content">
+            <p class="text-muted">Loading...</p>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="hideDetailsModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Revert Confirmation Modal -->
+<div id="revert-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3>⚠️ Confirm Revert</h3>
+        <p>Are you sure you want to revert this change?</p>
+        <p><strong id="revert-item-name"></strong></p>
+        <p class="text-muted">This will undo the change and restore the previous state.</p>
+        <div class="modal-actions">
+            <button class="btn btn-warning" id="confirm-revert-btn">Revert</button>
+            <button class="btn btn-outline" onclick="hideRevertModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const csrfToken = '{{ csrf_token }}';
+let revertId = null;
+
+// Change details
+function showChangeDetails(id) {
+    // For now just show basic info - could be enhanced to show full JSON diff
+    document.getElementById('details-content').innerHTML = `
+        <p>Change ID: ${id}</p>
+        <p class="text-muted">Detailed view coming soon...</p>
+    `;
+    document.getElementById('details-modal').style.display = 'flex';
+}
+
+function hideDetailsModal() {
+    document.getElementById('details-modal').style.display = 'none';
+}
+
+// Revert functionality
+function confirmRevert(btn) {
+    revertId = btn.dataset.id;
+    const description = btn.dataset.desc;
+    document.getElementById('revert-item-name').textContent = description;
+    document.getElementById('revert-modal').style.display = 'flex';
+}
+
+function hideRevertModal() {
+    document.getElementById('revert-modal').style.display = 'none';
+    revertId = null;
+}
+
+document.getElementById('confirm-revert-btn').addEventListener('click', async () => {
+    if (!revertId) return;
+    
+    try {
+        const response = await fetch(`/api/revert/${revertId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Error reverting: ' + result.error);
+        }
+    } catch (err) {
+        alert('Error reverting: ' + err.message);
+    }
+});
+
+// Close modals on outside click
+document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+        if (e.target.classList.contains('modal')) {
+            modal.style.display = 'none';
+        }
+    });
+});
+</script>
+{% endblock %}

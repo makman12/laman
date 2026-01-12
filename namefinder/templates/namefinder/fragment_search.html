@@ -1,0 +1,79 @@
+{% extends 'namefinder/base.html' %}
+{% load static %}
+
+{% block title %}Search Fragments - LAMAN{% endblock %}
+
+{% block content %}
+<div class="search-section">
+    <h2 class="page-title">Search Fragments</h2>
+    
+    <form method="get" action="{% url 'namefinder:fragment_search' %}" class="search-form">
+        <div class="fragment-search-row">
+            <div class="search-input-group">
+                <label for="series">Series</label>
+                <select id="series" name="series" class="search-select" onchange="this.form.submit()">
+                    <option value="">Select Series</option>
+                    {% for s in series_list %}
+                    <option value="{{ s.id }}" {% if selected_series == s.id|stringformat:"s" %}selected{% endif %}>
+                        {{ s.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="search-input-group">
+                <label for="fragment">Fragment</label>
+                <select id="fragment" name="fragment" class="search-select" {% if not fragments_for_series %}disabled{% endif %}>
+                    <option value="">Select Fragment</option>
+                    {% for f in fragments_for_series %}
+                    <option value="{{ f.id }}" {% if selected_fragment == f.id|stringformat:"s" %}selected{% endif %}>
+                        {{ f.fragment_number }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <button type="submit" class="search-btn">View Fragment</button>
+        </div>
+    </form>
+</div>
+
+{% if selected_series and fragments_for_series %}
+<div class="results-section">
+    <div class="results-header">
+        <p class="results-count">
+            {{ fragments_for_series.count }} fragment{{ fragments_for_series.count|pluralize }} in {{ selected_series_name }}
+        </p>
+    </div>
+    
+    <div class="results-grid">
+        {% for fragment in fragments_for_series %}
+        <a href="{% url 'namefinder:fragment_detail' fragment.id %}" class="fragment-card">
+            <div class="fragment-card-title">{{ fragment.series_fragment }}</div>
+            <div class="fragment-card-meta">
+                {{ fragment.instances.count }} attestation{{ fragment.instances.count|pluralize }}
+                {% if fragment.publication_type %}
+                · {{ fragment.publication_type.name }}
+                {% endif %}
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% elif not selected_series %}
+<div class="results-section">
+    <p class="text-muted">Select a series to view available fragments.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-redirect when fragment is selected
+document.getElementById('fragment').addEventListener('change', function() {
+    if (this.value) {
+        window.location.href = '{% url "namefinder:fragment_detail" 0 %}'.replace('0', this.value);
+    }
+});
+</script>
+{% endblock %}
