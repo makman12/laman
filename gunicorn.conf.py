@@ -27,4 +27,4 @@ loglevel = "info"
 proc_name = "laman"
 
 # Working directory
-chdir = "/var/www/laman"
+chdir = "/home/mali/laman"

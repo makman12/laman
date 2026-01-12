@@ -4,10 +4,10 @@ Requires=gunicorn-laman.socket
 After=network.target
 
 [Service]
-User=www-data
-Group=www-data
-WorkingDirectory=/var/www/laman
-ExecStart=/var/www/laman/venv/bin/gunicorn \
+User=mali
+Group=mali
+WorkingDirectory=/home/mali/laman
+ExecStart=/home/mali/laman/venv/bin/gunicorn \
           --access-logfile - \
           --workers 3 \
           --bind unix:/run/gunicorn/laman.sock \

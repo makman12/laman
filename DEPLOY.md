@@ -19,12 +19,12 @@ sudo apt install -y python3 python3-pip python3-venv nginx git
 
 ### Create directories
 ```bash
-sudo mkdir -p /var/www/laman
+mkdir -p /home/mali/laman
 sudo mkdir -p /run/gunicorn
 sudo mkdir -p /var/log/gunicorn
-sudo chown www-data:www-data /var/www/laman
-sudo chown www-data:www-data /run/gunicorn
-sudo chown www-data:www-data /var/log/gunicorn
+sudo chown mali:mali /home/mali/laman
+sudo chown mali:mali /run/gunicorn
+sudo chown mali:mali /var/log/gunicorn
 ```
 
 ---
@@ -33,14 +33,14 @@ sudo chown www-data:www-data /var/log/gunicorn
 
 ### Option A: Clone from GitHub
 ```bash
-cd /var/www
-sudo -u www-data git clone https://github.com/YOUR_USERNAME/laman.git
+cd /home/mali
+git clone https://github.com/makman12/laman.git
 ```
 
 ### Option B: Upload directly
 ```bash
 # From your local machine:
-scp -r LamanV3/* user@your-server:/var/www/laman/
+scp -r LamanV3/* mali@your-server:/home/mali/laman/
 ```
 
 ---
@@ -48,14 +48,14 @@ scp -r LamanV3/* user@your-server:/var/www/laman/
 ## 3. Setup Python Environment
 
 ```bash
-cd /var/www/laman
+cd /home/mali/laman
 
 # Create virtual environment
-sudo -u www-data python3 -m venv venv
+python3 -m venv venv
 
 # Activate and install dependencies
-sudo -u www-data ./venv/bin/pip install --upgrade pip
-sudo -u www-data ./venv/bin/pip install -r requirements.txt
+./venv/bin/pip install --upgrade pip
+./venv/bin/pip install -r requirements.txt
 ```
 
 ---
@@ -63,11 +63,11 @@ sudo -u www-data ./venv/bin/pip install -r requirements.txt
 ## 4. Configure Environment Variables
 
 ```bash
-cd /var/www/laman
+cd /home/mali/laman
 
 # Copy example and edit
-sudo -u www-data cp .env.example .env
-sudo -u www-data nano .env
+cp .env.example .env
+nano .env
 ```
 
 **Generate a new SECRET_KEY:**
@@ -90,10 +90,7 @@ The SQLite database (`db.sqlite3`) is not in git. Upload it separately:
 
 ```bash
 # From your local machine:
-scp db.sqlite3 user@your-server:/var/www/laman/
-
-# On server, set permissions:
-sudo chown www-data:www-data /var/www/laman/db.sqlite3
+scp db.sqlite3 mali@your-server:/home/mali/laman/
 ```
 
 ---
@@ -101,8 +98,8 @@ sudo chown www-data:www-data /var/www/laman/db.sqlite3
 ## 6. Collect Static Files
 
 ```bash
-cd /var/www/laman
-sudo -u www-data ./venv/bin/python manage.py collectstatic --noinput
+cd /home/mali/laman
+./venv/bin/python manage.py collectstatic --noinput
 ```
 
 This creates `staticfiles/` directory. WhiteNoise will serve these automatically.
@@ -197,24 +194,24 @@ sudo tail -f /var/log/nginx/error.log
 
 ### Update code from GitHub
 ```bash
-cd /var/www/laman
-sudo -u www-data git pull
-sudo -u www-data ./venv/bin/pip install -r requirements.txt
-sudo -u www-data ./venv/bin/python manage.py collectstatic --noinput
-sudo -u www-data ./venv/bin/python manage.py migrate
+cd /home/mali/laman
+git pull
+./venv/bin/pip install -r requirements.txt
+./venv/bin/python manage.py collectstatic --noinput
+./venv/bin/python manage.py migrate
 sudo systemctl restart gunicorn-laman.service
 ```
 
 ### Django shell
 ```bash
-cd /var/www/laman
-sudo -u www-data ./venv/bin/python manage.py shell
+cd /home/mali/laman
+./venv/bin/python manage.py shell
 ```
 
 ### Create superuser
 ```bash
-cd /var/www/laman
-sudo -u www-data ./venv/bin/python manage.py createsuperuser
+cd /home/mali/laman
+./venv/bin/python manage.py createsuperuser
 ```
 
 ---
@@ -233,13 +230,13 @@ ls -la /run/gunicorn/laman.sock
 
 ### Test gunicorn directly
 ```bash
-cd /var/www/laman
-sudo -u www-data ./venv/bin/gunicorn --bind 0.0.0.0:8000 laman.wsgi:application
+cd /home/mali/laman
+./venv/bin/gunicorn --bind 0.0.0.0:8000 laman.wsgi:application
 ```
 
 ### Permission issues
 ```bash
-sudo chown -R www-data:www-data /var/www/laman
+sudo chown -R mali:mali /home/mali/laman
 ```
 
 ### SELinux issues (if applicable)
@@ -252,7 +249,7 @@ sudo setsebool -P httpd_can_network_connect 1
 ## File Structure on Server
 
 ```
-/var/www/laman/
+/home/mali/laman/
 ├── db.sqlite3           # Database (uploaded separately)
 ├── .env                 # Environment variables (not in git)
 ├── manage.py
