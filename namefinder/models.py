@@ -137,6 +137,67 @@ class Fragment(models.Model):
         blank=True
     )
     
+    # CTH (Catalogue des Textes Hittites) information
+    cth = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        help_text="CTH number (e.g., '530.53', '700')"
+    )
+    cth_name = models.CharField(
+        max_length=500,
+        null=True,
+        blank=True,
+        help_text="CTH text name"
+    )
+    cth_description = models.TextField(
+        null=True,
+        blank=True,
+        help_text="CTH description"
+    )
+    
+    # Archaeological/Museum information
+    inventory_number = models.CharField(
+        max_length=200,
+        null=True,
+        blank=True,
+        help_text="Museum inventory number"
+    )
+    find_spot = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Archaeological find spot information"
+    )
+    
+    # Dating information
+    date = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        help_text="Date or period (e.g., 'jh', 'sjh', 'mh')"
+    )
+    date_uncertain = models.BooleanField(
+        default=False,
+        help_text="Whether the date is uncertain"
+    )
+    
+    # Additional metadata
+    comments = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Additional comments or notes"
+    )
+    is_matched = models.BooleanField(
+        default=False,
+        help_text="Whether this fragment was matched to CTH data"
+    )
+    match_method = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        help_text="Method used to match this fragment"
+    )
+    
     class Meta:
         verbose_name = "Fragment"
         verbose_name_plural = "Fragments"

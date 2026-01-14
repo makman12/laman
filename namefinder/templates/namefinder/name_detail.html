@@ -234,6 +234,8 @@
         <thead>
             <tr>
                 <th>Fragment</th>
+                <th>CTH</th>
+                <th>Date</th>
                 <th>Line</th>
                 <th>Spelling</th>
                 <th>Writing</th>
@@ -250,6 +252,20 @@
                 <td class="display-cell">
                     {% if instance.fragment %}
                     <a href="{% url 'namefinder:fragment_detail' instance.fragment.id %}">{{ instance.fragment.series_fragment }}</a>
+                    {% else %}
+                    —
+                    {% endif %}
+                </td>
+                <td class="display-cell">
+                    {% if instance.fragment.cth %}
+                    <a href="{% url 'namefinder:cth_detail' instance.fragment.cth %}" title="{{ instance.fragment.cth_name|default:'' }}">{{ instance.fragment.cth }}</a>
+                    {% else %}
+                    —
+                    {% endif %}
+                </td>
+                <td class="display-cell">
+                    {% if instance.fragment.date %}
+                    {{ instance.fragment.date }}{% if instance.fragment.date_uncertain %}<span class="uncertain-marker" title="Date uncertain">?</span>{% endif %}
                     {% else %}
                     —
                     {% endif %}
@@ -277,6 +293,8 @@
                         <div class="autocomplete-dropdown"></div>
                     </div>
                 </td>
+                <td class="edit-cell" style="display: none;">—</td><!-- CTH (read-only from fragment) -->
+                <td class="edit-cell" style="display: none;">—</td><!-- Date (read-only from fragment) -->
                 <td class="edit-cell" style="display: none;">
                     <input type="text" class="edit-line inline-input-sm" value="{{ instance.line|default:'' }}">
                 </td>

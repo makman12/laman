@@ -70,6 +70,16 @@
                     {% endfor %}
                 </select>
             </div>
+            
+            <div class="filter-group">
+                <label for="date">Date (Based on CTH)</label>
+                <select id="date" name="date" class="filter-select">
+                    <option value="">All Dates</option>
+                    {% for d in date_choices %}
+                    <option value="{{ d }}" {% if selected_date == d %}selected{% endif %}>{{ d }}</option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
     </form>
 </div>

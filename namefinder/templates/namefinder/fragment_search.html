@@ -7,6 +7,7 @@
 <div class="search-section">
     <h2 class="page-title">Search Fragments</h2>
     
+    <!-- Series/Fragment Browse Form -->
     <form method="get" action="{% url 'namefinder:fragment_search' %}" class="search-form">
         <div class="fragment-search-row">
             <div class="search-input-group">
@@ -15,7 +16,7 @@
                     <option value="">Select Series</option>
                     {% for s in series_list %}
                     <option value="{{ s.id }}" {% if selected_series == s.id|stringformat:"s" %}selected{% endif %}>
-                        {{ s.name }}
+                        {{ s.name }} ({{ s.fragment_count }})
                     </option>
                     {% endfor %}
                 </select>
@@ -33,11 +34,12 @@
                 </select>
             </div>
             
-            <button type="submit" class="search-btn">View Fragment</button>
+            <button type="submit" class="search-btn">View Fragments</button>
         </div>
     </form>
 </div>
 
+<!-- Series Browse Results -->
 {% if selected_series and fragments_for_series %}
 <div class="results-section">
     <div class="results-header">
@@ -52,9 +54,8 @@
             <div class="fragment-card-title">{{ fragment.series_fragment }}</div>
             <div class="fragment-card-meta">
                 {{ fragment.instances.count }} attestation{{ fragment.instances.count|pluralize }}
-                {% if fragment.publication_type %}
-                · {{ fragment.publication_type.name }}
-                {% endif %}
+                {% if fragment.cth %} · <span class="cth-badge">CTH {{ fragment.cth }}</span>{% endif %}
+                {% if fragment.date %} · {{ fragment.date }}{% endif %}
             </div>
         </a>
         {% endfor %}
@@ -62,9 +63,18 @@
 </div>
 {% elif not selected_series %}
 <div class="results-section">
-    <p class="text-muted">Select a series to view available fragments.</p>
+    <p class="text-muted">Select a series to browse available fragments, or use <a href="{% url 'namefinder:cth_search' %}">Search CTH</a> to find fragments by text type.</p>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.cth-badge {
+    color: var(--accent-color);
+    font-weight: 500;
+}
+</style>
 {% endblock %}
 
 {% block extra_js %}

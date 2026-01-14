@@ -113,10 +113,6 @@ Thumbs.db
 staticfiles/
 media/
 
-# Keep database out of git (it's large and contains data)
-# You'll copy it separately or use migrations
-db.sqlite3
-
 # Old project folder
 OLD PROJECT/
 

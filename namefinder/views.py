@@ -24,6 +24,7 @@ def index(request):
     selected_writing_type = request.GET.get('writing_type', '')
     selected_completeness = request.GET.get('completeness', '')
     selected_milieu = request.GET.get('milieu', '')
+    selected_date = request.GET.get('date', '')
     page_number = request.GET.get('page', 1)
     
     # Get filter options
@@ -31,6 +32,11 @@ def index(request):
     writing_types = WritingType.objects.all()
     completeness_types = CompletenessType.objects.all()
     milieus = Milieu.objects.all()
+    
+    # Get distinct dates for filter dropdown
+    date_choices = Fragment.objects.exclude(
+        date__isnull=True
+    ).exclude(date='').values_list('date', flat=True).distinct().order_by('date')
     
     names = Name.objects.select_related(
         'name_type', 'writing_type', 'completeness', 'milieu'
@@ -72,6 +78,9 @@ def index(request):
         names = names.filter(completeness_id=selected_completeness)
     if selected_milieu:
         names = names.filter(milieu_id=selected_milieu)
+    if selected_date:
+        # Filter names that have at least one instance on a fragment with this date
+        names = names.filter(instances__fragment__date=selected_date).distinct()
     
     # Order results
     names = names.order_by('query', 'name')
@@ -89,10 +98,12 @@ def index(request):
         'writing_types': writing_types,
         'completeness_types': completeness_types,
         'milieus': milieus,
+        'date_choices': date_choices,
         'selected_name_type': selected_name_type,
         'selected_writing_type': selected_writing_type,
         'selected_completeness': selected_completeness,
         'selected_milieu': selected_milieu,
+        'selected_date': selected_date,
     }
     
     return render(request, 'namefinder/index.html', context)
@@ -184,6 +195,119 @@ def fragment_search(request):
     return render(request, 'namefinder/fragment_search.html', context)
 
 
+def cth_search(request):
+    """Search page for CTH (Catalogue des Textes Hittites) with dropdown"""
+    import re
+    import json
+    
+    selected_main_cth = request.GET.get('main_cth', '')
+    selected_sub_cth = request.GET.get('sub_cth', '')
+    
+    # Get all distinct CTH numbers
+    all_cth = Fragment.objects.exclude(
+        cth__isnull=True
+    ).exclude(cth='').values_list('cth', flat=True).distinct().order_by('cth')
+    
+    # Parse CTH numbers into main and sub parts
+    # CTH format examples: "1", "1a", "1.I", "1.II.A", "376", "376.1", "376.A"
+    cth_structure = {}  # main_cth -> list of full cth values
+    
+    for cth in all_cth:
+        # Extract main CTH number (the leading numeric part)
+        match = re.match(r'^(\d+)', str(cth))
+        if match:
+            main_num = match.group(1)
+            if main_num not in cth_structure:
+                cth_structure[main_num] = []
+            cth_structure[main_num].append(cth)
+    
+    # Sort main CTH numbers numerically
+    main_cth_list = sorted(cth_structure.keys(), key=lambda x: int(x))
+    
+    # Get sub-CTH options for selected main CTH
+    sub_cth_list = []
+    if selected_main_cth and selected_main_cth in cth_structure:
+        sub_cth_list = cth_structure[selected_main_cth]
+    
+    context = {
+        'main_cth_list': main_cth_list,
+        'sub_cth_list': sub_cth_list,
+        'cth_structure_json': json.dumps(cth_structure),
+        'selected_main_cth': selected_main_cth,
+        'selected_sub_cth': selected_sub_cth,
+    }
+    
+    return render(request, 'namefinder/cth_search.html', context)
+
+
+def cth_detail(request, cth_number):
+    """Detail page for a CTH number showing all related fragments and attestations"""
+    from urllib.parse import unquote
+    import re
+    cth_number = unquote(cth_number)
+    
+    # Check if this is a main CTH number (purely numeric) or specific sub-text
+    is_main_cth = re.match(r'^\d+$', cth_number) is not None
+    
+    if is_main_cth:
+        # For main CTH, get all fragments that start with this number
+        fragments = Fragment.objects.filter(
+            cth__regex=r'^' + cth_number + r'([^0-9]|$)'
+        ).select_related(
+            'series', 'publication_type'
+        ).prefetch_related('instances', 'instances__name', 'instances__name__name_type').order_by('cth', 'series__name', 'fragment_number')
+    else:
+        # For specific sub-text, get exact match
+        fragments = Fragment.objects.filter(cth=cth_number).select_related(
+            'series', 'publication_type'
+        ).prefetch_related('instances', 'instances__name', 'instances__name__name_type').order_by('series__name', 'fragment_number')
+    
+    # Get the CTH name from the first fragment (they should all have the same)
+    cth_name = None
+    cth_description = None
+    if fragments.exists():
+        first = fragments.first()
+        cth_name = first.cth_name
+        cth_description = first.cth_description
+    
+    # Get all attestations across these fragments
+    if is_main_cth:
+        all_instances = Instance.objects.filter(
+            fragment__cth__regex=r'^' + cth_number + r'([^0-9]|$)'
+        ).select_related(
+            'name', 'name__name_type', 'fragment', 'fragment__series',
+            'writing_type', 'determinative', 'completeness'
+        ).order_by('fragment__cth', 'fragment__series__name', 'fragment__fragment_number', 'line')
+    else:
+        all_instances = Instance.objects.filter(
+            fragment__cth=cth_number
+        ).select_related(
+            'name', 'name__name_type', 'fragment', 'fragment__series',
+            'writing_type', 'determinative', 'completeness'
+        ).order_by('fragment__series__name', 'fragment__fragment_number', 'line')
+    
+    # Count unique names
+    unique_names = all_instances.values('name').distinct().count()
+    
+    # Get distinct sub-CTH numbers if this is a main CTH
+    sub_cth_list = []
+    if is_main_cth:
+        sub_cth_list = list(fragments.values_list('cth', flat=True).distinct().order_by('cth'))
+    
+    context = {
+        'cth_number': cth_number,
+        'cth_name': cth_name,
+        'cth_description': cth_description,
+        'fragments': fragments,
+        'instances': all_instances,
+        'unique_names': unique_names,
+        'is_main_cth': is_main_cth,
+        'sub_cth_list': sub_cth_list,
+    }
+    
+    return render(request, 'namefinder/cth_detail.html', context)
+
+
 def fragment_detail(request, pk):
     """Detail page for a single fragment"""
     fragment = get_object_or_404(
@@ -191,11 +315,7 @@ def fragment_detail(request, pk):
         pk=pk
     )
     
-    # TEMPORARY: Exclude attestations for toponyms (place names)
-    # To revert: remove the exclude() clause
-    instances = Instance.objects.filter(fragment=fragment).exclude(
-        name__name_type__name='place'
-    ).select_related(
+    instances = Instance.objects.filter(fragment=fragment).select_related(
         'name', 'name__name_type', 'instance_type', 'writing_type', 'determinative', 'completeness'
     ).order_by('line', 'name__name')
     
@@ -412,11 +532,7 @@ def export_fragment_csv(request, pk):
     """Export attestations for a fragment as CSV"""
     fragment = get_object_or_404(Fragment.objects.select_related('series'), pk=pk)
     
-    # TEMPORARY: Exclude attestations for toponyms (place names)
-    # To revert: remove the exclude() clause
-    instances = Instance.objects.filter(fragment=fragment).exclude(
-        name__name_type__name='place'
-    ).select_related(
+    instances = Instance.objects.filter(fragment=fragment).select_related(
         'name', 'name__name_type', 'instance_type', 
         'writing_type', 'determinative', 'completeness'
     ).order_by('line', 'name__name')
