@@ -107,10 +107,15 @@ def name_detail(request, pk):
         pk=pk
     )
     
-    instances = Instance.objects.filter(name=name).select_related(
-        'fragment', 'fragment__series', 'instance_type', 
-        'writing_type', 'determinative', 'completeness'
-    ).order_by('fragment__series__name', 'fragment__fragment_number', 'line')
+    # TEMPORARY: Hide attestations for toponyms (place names)
+    # To revert: remove the if/else and always use the full query
+    if name.name_type and name.name_type.name == 'place':
+        instances = Instance.objects.none()  # Empty queryset for toponyms
+    else:
+        instances = Instance.objects.filter(name=name).select_related(
+            'fragment', 'fragment__series', 'instance_type', 
+            'writing_type', 'determinative', 'completeness'
+        ).order_by('fragment__series__name', 'fragment__fragment_number', 'line')
     
     determinatives = name.determinatives.all()
     
@@ -186,8 +191,12 @@ def fragment_detail(request, pk):
         pk=pk
     )
     
-    instances = Instance.objects.filter(fragment=fragment).select_related(
-        'name', 'instance_type', 'writing_type', 'determinative', 'completeness'
+    # TEMPORARY: Exclude attestations for toponyms (place names)
+    # To revert: remove the exclude() clause
+    instances = Instance.objects.filter(fragment=fragment).exclude(
+        name__name_type__name='place'
+    ).select_related(
+        'name', 'name__name_type', 'instance_type', 'writing_type', 'determinative', 'completeness'
     ).order_by('line', 'name__name')
     
     # Get all options for inline editing dropdowns
@@ -227,6 +236,11 @@ def about(request):
     }
     
     return render(request, 'namefinder/about.html', context)
+
+
+def guide(request):
+    """User guide page with documentation"""
+    return render(request, 'namefinder/guide.html')
 
 
 # =============================================================================
@@ -361,10 +375,15 @@ def export_name_csv(request, pk):
     """Export attestations for a name as CSV"""
     name = get_object_or_404(Name, pk=pk)
     
-    instances = Instance.objects.filter(name=name).select_related(
-        'fragment', 'fragment__series', 'instance_type', 
-        'writing_type', 'determinative', 'completeness'
-    ).order_by('fragment__series__name', 'fragment__fragment_number', 'line')
+    # TEMPORARY: Hide attestations for toponyms (place names)
+    # To revert: remove the if/else and always use the full query
+    if name.name_type and name.name_type.name == 'place':
+        instances = Instance.objects.none()
+    else:
+        instances = Instance.objects.filter(name=name).select_related(
+            'fragment', 'fragment__series', 'instance_type', 
+            'writing_type', 'determinative', 'completeness'
+        ).order_by('fragment__series__name', 'fragment__fragment_number', 'line')
     
     # Create CSV response
     response = HttpResponse(content_type='text/csv')
@@ -393,7 +412,11 @@ def export_fragment_csv(request, pk):
     """Export attestations for a fragment as CSV"""
     fragment = get_object_or_404(Fragment.objects.select_related('series'), pk=pk)
     
-    instances = Instance.objects.filter(fragment=fragment).select_related(
+    # TEMPORARY: Exclude attestations for toponyms (place names)
+    # To revert: remove the exclude() clause
+    instances = Instance.objects.filter(fragment=fragment).exclude(
+        name__name_type__name='place'
+    ).select_related(
         'name', 'name__name_type', 'instance_type', 
         'writing_type', 'determinative', 'completeness'
     ).order_by('line', 'name__name')
