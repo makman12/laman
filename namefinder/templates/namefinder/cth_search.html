@@ -1,0 +1,156 @@
+{% extends 'namefinder/base.html' %}
+{% load static %}
+
+{% block title %}Search CTH - LAMAN{% endblock %}
+
+{% block content %}
+<div class="search-section">
+    <h2 class="page-title">Search CTH (Catalogue des Textes Hittites)</h2>
+    
+    <form method="get" action="{% url 'namefinder:cth_search' %}" class="search-form" id="cth-form">
+        <div class="search-row">
+            <div class="search-input-group">
+                <label for="main_cth">Main CTH Number</label>
+                <select id="main_cth" name="main_cth" class="search-select">
+                    <option value="">— Select CTH —</option>
+                    {% for c in main_cth_list %}
+                    <option value="{{ c }}" {% if selected_main_cth == c %}selected{% endif %}>CTH {{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="search-input-group">
+                <label for="sub_cth">Sub-text (optional)</label>
+                <select id="sub_cth" name="sub_cth" class="search-select">
+                    <option value="">— All sub-texts —</option>
+                    {% for c in sub_cth_list %}
+                    <option value="{{ c }}" {% if selected_sub_cth == c %}selected{% endif %}>CTH {{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <button type="submit" class="search-btn">View CTH</button>
+        </div>
+    </form>
+</div>
+
+{% if selected_main_cth %}
+<script>
+    // Redirect to CTH detail page
+    {% if selected_sub_cth %}
+    window.location.href = '{% url "namefinder:cth_detail" "PLACEHOLDER" %}'.replace('PLACEHOLDER', encodeURIComponent('{{ selected_sub_cth }}'));
+    {% else %}
+    window.location.href = '{% url "namefinder:cth_detail" "PLACEHOLDER" %}'.replace('PLACEHOLDER', encodeURIComponent('{{ selected_main_cth }}'));
+    {% endif %}
+</script>
+{% else %}
+<div class="results-section">
+    <div class="cth-info-box">
+        <h3>About CTH</h3>
+        <p>The <strong>Catalogue des Textes Hittites</strong> (CTH) is the standard classification system for Hittite texts, developed by Emmanuel Laroche. Each CTH number identifies a specific text or text genre.</p>
+        <p>Select a main CTH number from the first dropdown. If sub-texts exist (e.g., CTH 1a, 1b, 1c), you can optionally select a specific sub-text from the second dropdown.</p>
+        <p class="cth-source">All CTH information (numbers, names, descriptions, and dating) is sourced from:</p>
+        <p class="cth-citation">S. Košak – G.G.W. Müller – S. Görke – Ch.W. Steitler, <a href="https://www.hethiter.net/" target="_blank">hethiter.net/</a>: CTH (2025-01-28)</p>
+    </div>
+    
+    <div class="cth-stats">
+        <div class="stat-card">
+            <div class="stat-number">{{ main_cth_list|length }}</div>
+            <div class="stat-label">Main CTH Numbers</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // CTH structure data from server
+    const cthStructure = {{ cth_structure_json|safe }};
+    
+    const mainSelect = document.getElementById('main_cth');
+    const subSelect = document.getElementById('sub_cth');
+    
+    mainSelect.addEventListener('change', function() {
+        const mainCth = this.value;
+        
+        // Clear sub-select
+        subSelect.innerHTML = '<option value="">— All sub-texts —</option>';
+        
+        if (mainCth && cthStructure[mainCth]) {
+            const subOptions = cthStructure[mainCth];
+            
+            // Only show sub-select options if there are multiple sub-texts
+            if (subOptions.length > 1) {
+                subOptions.forEach(function(cth) {
+                    const option = document.createElement('option');
+                    option.value = cth;
+                    option.textContent = 'CTH ' + cth;
+                    subSelect.appendChild(option);
+                });
+            }
+        }
+    });
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.cth-info-box {
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.cth-info-box h3 {
+    margin-top: 0;
+    color: var(--accent-color);
+}
+
+.cth-source {
+    margin-top: 1rem;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+}
+
+.cth-citation {
+    background: var(--background-color);
+    padding: 0.75rem 1rem;
+    border-radius: 4px;
+    border-left: 3px solid var(--accent-color);
+    font-style: italic;
+    margin: 0;
+}
+
+.cth-citation a {
+    color: var(--accent-color);
+}
+
+.cth-stats {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.stat-card {
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1.5rem 2rem;
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--accent-color);
+}
+
+.stat-label {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+</style>
+{% endblock %}

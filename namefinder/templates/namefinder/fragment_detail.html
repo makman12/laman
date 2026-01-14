@@ -84,6 +84,68 @@
     </div>
 </div>
 
+<!-- CTH Information Section -->
+{% if fragment.cth or fragment.cth_name or fragment.date or fragment.find_spot %}
+<div class="detail-section">
+    <h2>Text Information (CTH)</h2>
+    <div class="detail-grid">
+        {% if fragment.cth %}
+        <div class="detail-item">
+            <div class="detail-item-label">CTH Number</div>
+            <div class="detail-item-value">
+                <a href="{% url 'namefinder:cth_detail' fragment.cth %}">CTH {{ fragment.cth }}</a>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if fragment.cth_name %}
+        <div class="detail-item">
+            <div class="detail-item-label">Text Name</div>
+            <div class="detail-item-value">{{ fragment.cth_name }}</div>
+        </div>
+        {% endif %}
+        
+        {% if fragment.date %}
+        <div class="detail-item">
+            <div class="detail-item-label">Date</div>
+            <div class="detail-item-value">
+                {{ fragment.date }}
+                {% if fragment.date_uncertain %}<span class="uncertain-marker" title="Date uncertain">?</span>{% endif %}
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if fragment.inventory_number %}
+        <div class="detail-item">
+            <div class="detail-item-label">Inventory Number</div>
+            <div class="detail-item-value">{{ fragment.inventory_number }}</div>
+        </div>
+        {% endif %}
+    </div>
+    
+    {% if fragment.find_spot %}
+    <div class="detail-item" style="margin-top: 1rem;">
+        <div class="detail-item-label">Find Spot</div>
+        <div class="detail-item-value">{{ fragment.find_spot }}</div>
+    </div>
+    {% endif %}
+    
+    {% if fragment.cth_description %}
+    <div class="detail-item" style="margin-top: 1rem;">
+        <div class="detail-item-label">Description</div>
+        <div class="detail-item-value">{{ fragment.cth_description }}</div>
+    </div>
+    {% endif %}
+    
+    {% if fragment.comments %}
+    <div class="detail-item" style="margin-top: 1rem;">
+        <div class="detail-item-label">Comments</div>
+        <div class="detail-item-value">{{ fragment.comments }}</div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
 <div class="detail-section">
     <div class="section-header">
         <h2>Names Attested in This Fragment (<span id="names-count">{{ instances.count }}</span>)</h2>

@@ -39,6 +39,7 @@
         <ul class="nav-main">
             <li><a href="{% url 'namefinder:index' %}" class="{% if request.resolver_match.url_name == 'index' %}active{% endif %}">Search Names</a></li>
             <li><a href="{% url 'namefinder:fragment_search' %}" class="{% if request.resolver_match.url_name == 'fragment_search' or request.resolver_match.url_name == 'fragment_detail' %}active{% endif %}">Search Fragments</a></li>
+            <li><a href="{% url 'namefinder:cth_search' %}" class="{% if request.resolver_match.url_name == 'cth_search' or request.resolver_match.url_name == 'cth_detail' %}active{% endif %}">Search CTH</a></li>
             <li><a href="{% url 'namefinder:network' %}" class="{% if request.resolver_match.url_name == 'network' %}active{% endif %}">Network</a></li>
             <li><a href="{% url 'namefinder:about' %}" class="{% if request.resolver_match.url_name == 'about' %}active{% endif %}">About</a></li>
             <li><a href="{% url 'namefinder:guide' %}" class="{% if request.resolver_match.url_name == 'guide' %}active{% endif %}">Guide</a></li>

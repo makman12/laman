@@ -10,6 +10,8 @@ urlpatterns = [
     path('name/<int:pk>/', views.name_detail, name='name_detail'),
     path('fragments/', views.fragment_search, name='fragment_search'),
     path('fragment/<int:pk>/', views.fragment_detail, name='fragment_detail'),
+    path('cth/', views.cth_search, name='cth_search'),
+    path('cth/<str:cth_number>/', views.cth_detail, name='cth_detail'),
     path('about/', views.about, name='about'),
     path('guide/', views.guide, name='guide'),
     

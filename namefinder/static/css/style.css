@@ -2292,3 +2292,73 @@ tr.reverted .status-badge {
         height: 55vh;
     }
 }
+
+/* =============================================================================
+   Search Divider & Fragment Search Enhancements
+   ============================================================================= */
+
+.search-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 1.5rem 0;
+    color: var(--text-muted);
+}
+
+.search-divider::before,
+.search-divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.search-divider span {
+    padding: 0 1rem;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Uncertain date marker */
+.uncertain-marker {
+    color: var(--napoli-red);
+    font-weight: bold;
+    margin-left: 2px;
+    cursor: help;
+}
+
+/* CTH search result styling */
+.data-table td[title] {
+    cursor: help;
+}
+
+/* Pagination styling */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.page-link {
+    padding: 0.5rem 1rem;
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--accent-color);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.page-link:hover {
+    background: var(--accent-color);
+    color: white;
+}
+
+.page-info {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}

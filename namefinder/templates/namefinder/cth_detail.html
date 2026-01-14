@@ -1,0 +1,218 @@
+{% extends 'namefinder/base.html' %}
+{% load static %}
+
+{% block title %}CTH {{ cth_number }} - LAMAN{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="{% url 'namefinder:cth_search' %}">CTH</a>
+    <span>›</span>
+    CTH {{ cth_number }}
+</div>
+
+<div class="detail-header">
+    <div class="detail-header-main">
+        <h1 class="detail-title">CTH {{ cth_number }}</h1>
+        {% if cth_name %}
+        <div class="detail-subtitle">{{ cth_name }}</div>
+        {% endif %}
+        <div class="detail-meta">
+            <span>{{ fragments.count }} fragment{{ fragments.count|pluralize }}</span>
+            <span>·</span>
+            <span>{{ instances.count }} attestation{{ instances.count|pluralize }}</span>
+            <span>·</span>
+            <span>{{ unique_names }} unique name{{ unique_names|pluralize }}</span>
+        </div>
+    </div>
+</div>
+
+{% if cth_description %}
+<div class="detail-section">
+    <h2>Description</h2>
+    <p>{{ cth_description }}</p>
+</div>
+{% endif %}
+
+{% if is_main_cth and sub_cth_list|length > 1 %}
+<!-- Sub-CTH Navigation -->
+<div class="detail-section">
+    <h2>Sub-texts</h2>
+    <div class="sub-cth-list">
+        {% for sub_cth in sub_cth_list %}
+        <a href="{% url 'namefinder:cth_detail' sub_cth %}" class="sub-cth-badge">CTH {{ sub_cth }}</a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Fragments Section -->
+<div class="detail-section collapsible-section">
+    <button class="collapsible-header active" onclick="toggleCollapsible(this)">
+        <h2>Fragments ({{ fragments.count }})</h2>
+        <span class="collapse-icon">▼</span>
+    </button>
+    <div class="collapsible-content">
+        {% if fragments %}
+        <div class="results-grid">
+            {% for fragment in fragments %}
+            <a href="{% url 'namefinder:fragment_detail' fragment.id %}" class="fragment-card">
+                <div class="fragment-card-title">{{ fragment.series_fragment }}</div>
+                <div class="fragment-card-meta">
+                    {{ fragment.instances.count }} attestation{{ fragment.instances.count|pluralize }}
+                    {% if is_main_cth and fragment.cth != cth_number %} · <span class="cth-badge-small">CTH {{ fragment.cth }}</span>{% endif %}
+                    {% if fragment.date %} · {{ fragment.date }}{% if fragment.date_uncertain %}?{% endif %}{% endif %}
+                </div>
+                {% if fragment.inventory_number %}
+                <div class="fragment-card-inv">Inv: {{ fragment.inventory_number }}</div>
+                {% endif %}
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted">No fragments found for this CTH.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- All Attestations Section -->
+<div class="detail-section collapsible-section">
+    <button class="collapsible-header active" onclick="toggleCollapsible(this)">
+        <h2>All Attestations ({{ instances.count }})</h2>
+        <span class="collapse-icon">▼</span>
+    </button>
+    <div class="collapsible-content">
+        {% if instances %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Fragment</th>
+                    <th>Date</th>
+                    <th>Line</th>
+                    <th>Spelling</th>
+                    <th>Writing</th>
+                    <th>Determinative</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for instance in instances %}
+                <tr>
+                    <td>
+                        {% if instance.name %}
+                        <a href="{% url 'namefinder:name_detail' instance.name.id %}">{{ instance.name.name|safe }}</a>
+                        {% else %}
+                        Unknown
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if instance.name.name_type %}
+                        <span class="name-type-badge {{ instance.name.name_type.name }}">{{ instance.name.name_type.name }}</span>
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'namefinder:fragment_detail' instance.fragment.id %}">{{ instance.fragment.series_fragment }}</a>
+                    </td>
+                    <td>
+                        {% if instance.fragment.date %}
+                        {{ instance.fragment.date }}{% if instance.fragment.date_uncertain %}<span class="uncertain-marker">?</span>{% endif %}
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
+                    <td>{{ instance.line|default:"—" }}</td>
+                    <td>{{ instance.spelling|default:"—"|safe }}</td>
+                    <td>{{ instance.writing_type.name|default:"—" }}</td>
+                    <td>{{ instance.determinative.name|default:"—" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted">No attestations found for this CTH{% if selected_date %} with date "{{ selected_date }}"{% endif %}.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.detail-subtitle {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.filter-bar {
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.inline-filter-form {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.inline-filter-form label {
+    font-weight: 500;
+}
+
+.fragment-card-inv {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+}
+
+.sub-cth-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.sub-cth-badge {
+    display: inline-block;
+    padding: 0.4rem 0.8rem;
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-color);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.sub-cth-badge:hover {
+    background: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+.cth-badge-small {
+    background: var(--accent-color);
+    color: white;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.8rem;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleCollapsible(button) {
+    button.classList.toggle('active');
+    const content = button.nextElementSibling;
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+    } else {
+        content.style.display = 'none';
+    }
+}
+</script>
+{% endblock %}
