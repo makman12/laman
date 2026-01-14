@@ -11,6 +11,7 @@ urlpatterns = [
     path('fragments/', views.fragment_search, name='fragment_search'),
     path('fragment/<int:pk>/', views.fragment_detail, name='fragment_detail'),
     path('about/', views.about, name='about'),
+    path('guide/', views.guide, name='guide'),
     
     # Authentication
     path('login/', views.user_login, name='login'),
