@@ -135,7 +135,7 @@
         searchInput.addEventListener('input', function() {
             var q = searchInput.value.trim();
             if (searchTimer) clearTimeout(searchTimer);
-            if (q.length < 2) {
+            if (q.length < 1) {
                 autocompleteEl.style.display = 'none';
                 return;
             }
@@ -228,9 +228,15 @@
                 if (filtered.length === 0) {
                     autocompleteEl.innerHTML = '<div class="autocomplete-item text-muted">No results</div>';
                 } else {
-                    autocompleteEl.innerHTML = filtered.map(function(r, idx) {
+                    var html = '';
+                    // Show "Add all (N)" option when there are multiple results (useful for CTH intervals)
+                    if (filtered.length > 1) {
+                        html += '<div class="autocomplete-item autocomplete-add-all"><strong>Add all (' + filtered.length + ')</strong></div>';
+                    }
+                    html += filtered.map(function(r, idx) {
                         return '<div class="autocomplete-item" data-index="' + idx + '">' + escapeHtml(config.labelFn(r)) + '</div>';
                     }).join('');
+                    autocompleteEl.innerHTML = html;
                 }
                 autocompleteEl.style.display = 'block';
             })
@@ -241,6 +247,11 @@
 
     // Delegate click on autocomplete items
     document.addEventListener('click', function(e) {
+        // "Add all" button
+        if (e.target.closest('.autocomplete-add-all')) {
+            lastAutocompleteResults.forEach(function(r) { addItem(r); });
+            return;
+        }
         var item = e.target.closest('.autocomplete-item[data-index]');
         if (item) {
             var idx = parseInt(item.dataset.index);
@@ -402,11 +413,11 @@
         var maxWeight = Math.max.apply(null, links.map(function(l) { return l.weight; }).concat([1]));
         var strokeScale = d3.scaleLinear().domain([1, maxWeight]).range([0.5, 4]);
 
-        var edgeOpacity = isVeryLarge ? 0.15 : isLarge ? 0.35 : 0.6;
+        var edgeOpacity = isVeryLarge ? 0.3 : isLarge ? 0.5 : 0.8;
 
         var link = g.append('g').attr('class', 'links')
             .selectAll('line').data(links).enter().append('line')
-            .attr('stroke', 'var(--border-color)')
+            .attr('stroke', 'var(--text-muted)')
             .attr('stroke-opacity', edgeOpacity)
             .attr('stroke-width', function(d) { return strokeScale(d.weight); });
 
@@ -438,8 +449,15 @@
         .on('mouseout', function() { tooltipEl.style('display', 'none'); })
         .on('click', function(event, d) { window.open('/name/' + d.id + '/', '_blank'); });
 
-        // Labels
-        var labelsVisible = showLabels && !isLarge;
+        // Labels — in large graphs, only label nodes above a size threshold
+        var labelSizeThreshold = 0;
+        if (isLarge) {
+            // Sort node sizes descending, label the top ~30% or at least ego nodes
+            var sizes = data.nodes.map(function(d) { return getNodeSize(d); }).sort(function(a, b) { return b - a; });
+            var cutoffIndex = Math.max(1, Math.floor(sizes.length * 0.3));
+            labelSizeThreshold = sizes[Math.min(cutoffIndex, sizes.length - 1)];
+        }
+
         var labels = g.append('g').attr('class', 'labels')
             .selectAll('text').data(data.nodes).enter().append('text')
             .text(function(d) { return d.name; })
@@ -449,7 +467,12 @@
             .attr('dx', function(d) { return getNodeSize(d) + 3; })
             .attr('dy', 3)
             .style('pointer-events', 'none')
-            .style('display', labelsVisible ? 'block' : 'none');
+            .style('display', function(d) {
+                if (!showLabels) return 'none';
+                if (!isLarge) return 'block';
+                // In large graphs, show label if node is large enough or is ego
+                return (d.is_ego || getNodeSize(d) >= labelSizeThreshold) ? 'block' : 'none';
+            });
 
         simulation.on('tick', function() {
             link.attr('x1', function(d) { return d.source.x; }).attr('y1', function(d) { return d.source.y; })

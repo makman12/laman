@@ -782,7 +782,7 @@ def api_network_data(request):
 def api_name_search(request):
     """Search names for autocomplete in network page."""
     q = request.GET.get('q', '').strip()
-    if len(q) < 2:
+    if len(q) < 1:
         return JsonResponse({'results': []})
 
     names = Name.objects.filter(
@@ -800,15 +800,50 @@ def api_name_search(request):
 
 @require_http_methods(["GET"])
 def api_volume_search(request):
-    """Search volumes (series + volume number) for network autocomplete."""
+    """Search volumes (series + volume number) for network autocomplete.
+    Supports interval syntax: 'KBo 1-100' returns all KBo volumes with number between 1 and 100.
+    """
+    import re as _re
     q = request.GET.get('q', '').strip()
     if len(q) < 1:
         return JsonResponse({'results': []})
 
     parts = q.split(None, 1)
 
+    # Check for interval syntax like "KBo 1-100"
     if len(parts) == 2:
-        series_part, volume_part = parts
+        series_part = parts[0]
+        interval_match = _re.match(r'^(\d+)\s*-\s*(\d+)$', parts[1])
+        if interval_match:
+            start = int(interval_match.group(1))
+            end = int(interval_match.group(2))
+            if start > end:
+                start, end = end, start
+
+            fragments = Fragment.objects.filter(
+                series__name__icontains=series_part
+            ).select_related('series')
+
+            seen = {}
+            for f in fragments.only('series_id', 'series__name', 'fragment_number'):
+                vol = f.fragment_number.split('.')[0] if '.' in f.fragment_number else f.fragment_number
+                try:
+                    vol_num = int(vol)
+                except ValueError:
+                    continue
+                if start <= vol_num <= end:
+                    key = (f.series_id, vol)
+                    if key not in seen:
+                        seen[key] = f'{f.series.name} {vol}'
+
+            results = [
+                {'series_id': sid, 'volume': vol, 'label': label}
+                for (sid, vol), label in sorted(seen.items(), key=lambda x: x[1])
+            ]
+            return JsonResponse({'results': results})
+
+        # Normal two-part search (series + volume prefix)
+        volume_part = parts[1]
         fragments = Fragment.objects.filter(
             series__name__icontains=series_part,
             fragment_number__istartswith=volume_part
@@ -835,10 +870,39 @@ def api_volume_search(request):
 
 @require_http_methods(["GET"])
 def api_cth_search(request):
-    """Search CTH numbers for network autocomplete."""
+    """Search CTH numbers for network autocomplete.
+    Supports interval syntax: '1-20' returns all CTH numbers with main number between 1 and 20.
+    """
+    import re as _re
     q = request.GET.get('q', '').strip()
     if len(q) < 1:
         return JsonResponse({'results': []})
+
+    # Check for interval syntax like "1-20"
+    interval_match = _re.match(r'^(\d+)\s*-\s*(\d+)$', q)
+    if interval_match:
+        start = int(interval_match.group(1))
+        end = int(interval_match.group(2))
+        if start > end:
+            start, end = end, start
+
+        # Get all distinct CTH values, then filter by main number in range
+        all_cth = (
+            Fragment.objects
+            .exclude(cth__isnull=True)
+            .exclude(cth='')
+            .values_list('cth', flat=True)
+            .distinct()
+        )
+        results = []
+        for c in all_cth:
+            main_match = _re.match(r'^(\d+)', c)
+            if main_match:
+                main_num = int(main_match.group(1))
+                if start <= main_num <= end:
+                    results.append({'cth': c, 'label': f'CTH {c}'})
+        results.sort(key=lambda r: r['cth'])
+        return JsonResponse({'results': results})
 
     cth_values = (
         Fragment.objects
