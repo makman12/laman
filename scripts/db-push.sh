@@ -32,6 +32,6 @@ scp "$LOCAL_PATH" "$SERVER:$REMOTE_DIR/db.sqlite3"
 
 # Restart gunicorn
 echo "Restarting gunicorn..."
-ssh "$SERVER" "sudo systemctl restart gunicorn"
+ssh "$SERVER" "sudo systemctl restart gunicorn-laman"
 
 echo "Database pushed and server restarted successfully."
