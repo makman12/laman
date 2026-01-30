@@ -113,6 +113,15 @@ Thumbs.db
 staticfiles/
 media/
 
+# Database
+db.sqlite3
+db.sqlite3.*
+*.sqlite3.bak
+
+# Claude Code
+.claude/
+CLAUDE.md
+
 # Old project folder
 OLD PROJECT/
 
