@@ -6,40 +6,31 @@
 {% block content %}
 <div class="help-page">
     <div class="help-header">
-        <h1>📖 User Guide</h1>
+        <h1>User Guide</h1>
         <p>Learn how to use LAMAN to explore Hittite names, places, and deities</p>
     </div>
 
     <!-- Quick Links -->
     <div class="guide-cards">
         <a href="{% url 'namefinder:index' %}" class="guide-card">
-            <div class="guide-card-icon">🔍</div>
             <h3>Search Names</h3>
             <p>Find names using fuzzy matching and filters</p>
         </a>
-        
+
         <a href="{% url 'namefinder:fragment_search' %}" class="guide-card">
-            <div class="guide-card-icon">📜</div>
             <h3>Search Fragments</h3>
             <p>Find tablets by catalog number</p>
         </a>
-        
+
         <a href="{% url 'namefinder:network' %}" class="guide-card">
-            <div class="guide-card-icon">🕸️</div>
             <h3>Network View</h3>
             <p>Visualize name connections</p>
-        </a>
-        
-        <a href="{% url 'namefinder:about' %}" class="guide-card">
-            <div class="guide-card-icon">📊</div>
-            <h3>Statistics</h3>
-            <p>Database overview and counts</p>
         </a>
     </div>
 
     <!-- Search Examples Section -->
     <div class="help-section">
-        <h2><span class="section-icon">🔍</span> How Search Works</h2>
+        <h2>How Search Works</h2>
         <p>LAMAN uses <strong>fuzzy matching</strong> to find names even when you don't know the exact transliteration. The search is case-insensitive and handles common variations.</p>
         
         <h3>Example: Finding Kattaḫḫa</h3>
@@ -71,23 +62,23 @@
 
     <!-- Understanding Name Details -->
     <div class="help-section">
-        <h2><span class="section-icon">📝</span> Understanding Name Details</h2>
+        <h2>Understanding Name Details</h2>
         <p>When you click on a name, you'll see detailed information:</p>
         
         <div class="detail-explanation">
-            <h3>📌 Name Types</h3>
+            <h3>Name Types</h3>
             <ul>
                 <li><span class="name-type-badge person">Person</span> - Personal names (anthroponyms)</li>
                 <li><span class="name-type-badge place">Place</span> - Geographical names (toponyms)</li>
                 <li><span class="name-type-badge deity">Deity</span> - Divine names (theonyms)</li>
             </ul>
             
-            <h3>↔️ Correspondence & Variants</h3>
+            <h3>Correspondence & Variants</h3>
             <p><strong>Correspondence</strong> shows how a name appears in other writing systems or languages. For example, a Hittite name might correspond to a Hurrian or Akkadian form.</p>
             <p><strong>Variant Forms</strong> are different spellings of the same name within the Hittite corpus.</p>
-            <p class="tip-box">💡 <strong>Tip:</strong> Searching for a correspondence or variant will also find the main name entry!</p>
+            <p class="tip-box"><strong>Tip:</strong> Searching for a correspondence or variant will also find the main name entry.</p>
             
-            <h3>📜 Attestations</h3>
+            <h3>Attestations</h3>
             <p>Every occurrence of a name in cuneiform texts is recorded with:</p>
             <ul>
                 <li><strong>Fragment:</strong> The tablet reference (e.g., KUB 1.1)</li>
@@ -96,7 +87,7 @@
                 <li><strong>TLH<sup>dig</sup>:</strong> Link to view the text online</li>
             </ul>
             
-            <h3>🔗 Co-occurring Names</h3>
+            <h3>Co-occurring Names</h3>
             <p>This section shows <strong>other names that appear on the same tablets</strong>. This is useful for:</p>
             <ul>
                 <li>Finding related individuals (family members, colleagues)</li>
@@ -109,7 +100,7 @@
 
     <!-- Fragmentary Names Section -->
     <div class="help-section">
-        <h2><span class="section-icon">❓</span> Fragmentary Attestations & "Unknown" Names</h2>
+        <h2>Fragmentary Attestations & "Unknown" Names</h2>
         <p>Some attestations in cuneiform texts are <strong>too fragmentary</strong> to identify with certainty. These present a special case in the database.</p>
         
         <div class="detail-explanation">
@@ -125,7 +116,7 @@
             </ul>
             
             <div class="example-box">
-                <h4>📋 Example</h4>
+                <h4>Example</h4>
                 <p>In <a href="{% url 'namefinder:fragment_detail' 1241 %}">CHDS 2.128</a>, the spelling "<code>(°m°)pí-ḫa-x-[</code>" is recorded as an attestation of "Unknown" because it could belong to any name starting with "Piha-".</p>
                 <p>To find this attestation, you must search for the fragment (CHDS 2.128), not for "Piha" in the name search.</p>
             </div>
@@ -142,7 +133,7 @@
 
     <!-- Using Regex -->
     <div class="help-section">
-        <h2><span class="section-icon">🔤</span> Advanced: Regex Search</h2>
+        <h2>Advanced: Regex Search</h2>
         <p>Enable the <strong>Regex</strong> checkbox for powerful pattern matching:</p>
         
         <div class="search-examples">
@@ -171,7 +162,7 @@
 
     <!-- Filters -->
     <div class="help-section">
-        <h2><span class="section-icon">🎯</span> Using Filters</h2>
+        <h2>Using Filters</h2>
         <p>Narrow down your search results using the filter dropdowns:</p>
         
         <ul>
@@ -186,7 +177,7 @@
 
     <!-- Fragment Search -->
     <div class="help-section">
-        <h2><span class="section-icon">📜</span> Fragment Search</h2>
+        <h2>Fragment Search</h2>
         <p>Use the <strong>Search Fragments</strong> page to find tablets by their catalog number (e.g., KUB 1.1, KBo 4.2).</p>
         <p>Click on a fragment to see all names attested on that tablet, including fragmentary attestations linked to "Unknown".</p>
     </div>

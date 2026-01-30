@@ -58,11 +58,6 @@
     border-color: var(--accent-color);
 }
 
-.guide-card-icon {
-    font-size: 2.5rem;
-    margin-bottom: 12px;
-}
-
 .guide-card h3 {
     margin: 0 0 8px;
     font-size: 1.1rem;
@@ -88,16 +83,9 @@
 }
 
 .help-section h2 {
-    display: flex;
-    align-items: center;
-    gap: 10px;
     margin: 0 0 16px;
     font-size: 1.3rem;
     color: var(--text-primary);
-}
-
-.help-section h2 .section-icon {
-    font-size: 1.4rem;
 }
 
 .help-section h3 {
@@ -301,10 +289,6 @@
     
     .guide-card {
         padding: 16px;
-    }
-    
-    .guide-card-icon {
-        font-size: 2rem;
     }
     
     .help-section {
