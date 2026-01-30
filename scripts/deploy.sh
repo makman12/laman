@@ -16,6 +16,11 @@ mkdir -p backups
 cp db.sqlite3 "backups/db.sqlite3.$TIMESTAMP"
 echo "Database backed up: backups/db.sqlite3.$TIMESTAMP"
 
+# Keep only the 5 most recent backups
+cd backups
+ls -t db.sqlite3.* | tail -n +6 | xargs rm -f 2>/dev/null || true
+cd ..
+
 # Move DB out of the way so git pull doesn't conflict
 mv db.sqlite3 db.sqlite3.tmp 2>/dev/null || true
 

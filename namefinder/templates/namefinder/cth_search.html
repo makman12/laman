@@ -10,7 +10,7 @@
     <form method="get" action="{% url 'namefinder:cth_search' %}" class="search-form" id="cth-form">
         <div class="search-row">
             <div class="search-input-group">
-                <label for="main_cth">Main CTH Number</label>
+                <label for="main_cth">CTH Number</label>
                 <select id="main_cth" name="main_cth" class="search-select">
                     <option value="">— Select CTH —</option>
                     {% for c in main_cth_list %}
@@ -20,7 +20,7 @@
             </div>
             
             <div class="search-input-group">
-                <label for="sub_cth">Sub-text (optional)</label>
+                <label for="sub_cth">Text (optional)</label>
                 <select id="sub_cth" name="sub_cth" class="search-select">
                     <option value="">— All sub-texts —</option>
                     {% for c in sub_cth_list %}
