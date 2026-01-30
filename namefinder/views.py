@@ -268,6 +268,8 @@ def cth_search(request):
         match = re.match(r'^(\d+)', str(cth))
         if match:
             main_num = match.group(1)
+            if main_num == '521':
+                continue
             if main_num not in cth_structure:
                 cth_structure[main_num] = []
             cth_structure[main_num].append(cth)
