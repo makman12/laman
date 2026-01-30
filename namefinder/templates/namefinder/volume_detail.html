@@ -1,0 +1,98 @@
+{% extends 'namefinder/base.html' %}
+{% load static %}
+
+{% block title %}{{ series.name }} {{ volume }} - LAMAN{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="{% url 'namefinder:fragment_search' %}">Fragments</a>
+    <span>›</span>
+    <a href="{% url 'namefinder:fragment_search' %}?series={{ series.id }}">{{ series.name }}</a>
+    <span>›</span>
+    {{ volume }}
+</div>
+
+<div class="detail-header">
+    <div class="detail-header-main">
+        <h1 class="detail-title">{{ series.name }} {{ volume }}</h1>
+        <div class="detail-meta">
+            <span>{{ fragment_count }} fragment{{ fragment_count|pluralize }}</span>
+            <span>{{ instance_count }} attestation{{ instance_count|pluralize }}</span>
+        </div>
+    </div>
+</div>
+
+<div class="detail-section">
+    <h2>Fragments in {{ series.name }} {{ volume }}</h2>
+    <div class="results-grid">
+        {% for fragment in fragments %}
+        <a href="{% url 'namefinder:fragment_detail' fragment.id %}" class="fragment-card">
+            <div class="fragment-card-title">{{ fragment.series_fragment }}</div>
+            <div class="fragment-card-meta">
+                {{ fragment.instances.count }} attestation{{ fragment.instances.count|pluralize }}
+                {% if fragment.cth %} · <span class="cth-badge">CTH {{ fragment.cth }}</span>{% endif %}
+                {% if fragment.date %} · {{ fragment.date }}{% endif %}
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="detail-section">
+    <h2>All Attestations ({{ instance_count }})</h2>
+
+    {% if instances %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Fragment</th>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Line</th>
+                <th>Spelling</th>
+                <th>Writing</th>
+                <th>Determinative</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for instance in instances %}
+            <tr>
+                <td>
+                    <a href="{% url 'namefinder:fragment_detail' instance.fragment.id %}">{{ instance.fragment.fragment_number }}</a>
+                </td>
+                <td>
+                    {% if instance.name %}
+                    <a href="{% url 'namefinder:name_detail' instance.name.id %}">{{ instance.name.name|safe }}</a>
+                    {% else %}
+                    Unknown
+                    {% endif %}
+                </td>
+                <td>
+                    {% if instance.instance_type %}
+                    <span class="name-type-badge {{ instance.instance_type.name }}">{{ instance.instance_type.name }}</span>
+                    {% else %}
+                    —
+                    {% endif %}
+                </td>
+                <td>{{ instance.line|default:"—" }}</td>
+                <td>{{ instance.spelling|default:"—"|safe }}</td>
+                <td>{{ instance.writing_type.name|default:"—" }}</td>
+                <td>{{ instance.determinative.name|default:"—" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="text-muted">No attestations found in this volume.</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.cth-badge {
+    color: var(--accent-color);
+    font-weight: 500;
+}
+</style>
+{% endblock %}

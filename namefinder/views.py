@@ -214,6 +214,38 @@ def fragment_search(request):
     return render(request, 'namefinder/fragment_search.html', context)
 
 
+def volume_detail(request, series_id, volume):
+    """Detail page for a volume within a series, showing all fragments and attestations"""
+    series = get_object_or_404(Series, pk=series_id)
+
+    fragments = Fragment.objects.filter(
+        series=series,
+        fragment_number__startswith=volume + '.'
+    ).select_related('publication_type').prefetch_related('instances').order_by('fragment_number')
+
+    if not fragments.exists():
+        from django.http import Http404
+        raise Http404("No fragments found for this volume.")
+
+    instances = Instance.objects.filter(
+        fragment__in=fragments
+    ).select_related(
+        'name', 'name__name_type', 'instance_type', 'writing_type',
+        'determinative', 'completeness', 'fragment'
+    ).order_by('fragment__fragment_number', 'line', 'name__name')
+
+    context = {
+        'series': series,
+        'volume': volume,
+        'fragments': fragments,
+        'instances': instances,
+        'fragment_count': fragments.count(),
+        'instance_count': instances.count(),
+    }
+
+    return render(request, 'namefinder/volume_detail.html', context)
+
+
 def cth_search(request):
     """Search page for CTH (Catalogue des Textes Hittites) with dropdown"""
     import re

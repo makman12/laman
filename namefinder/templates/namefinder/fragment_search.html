@@ -24,7 +24,7 @@
 
             <div class="search-input-group">
                 <label for="volume">Volume</label>
-                <select id="volume" name="volume" class="search-select" {% if not volumes_for_series %}disabled{% endif %} onchange="this.form.elements['fragment'].value=''; this.form.submit()">
+                <select id="volume" name="volume" class="search-select" {% if not volumes_for_series %}disabled{% endif %} onchange="navigateVolume(this)">
                     <option value="">All Volumes</option>
                     {% for v in volumes_for_series %}
                     <option value="{{ v }}" {% if selected_volume == v %}selected{% endif %}>
@@ -91,6 +91,19 @@
 
 {% block extra_js %}
 <script>
+// Navigate to volume detail page when volume is selected
+function navigateVolume(select) {
+    var volume = select.value;
+    var series = document.getElementById('series').value;
+    if (volume && series) {
+        window.location.href = '/volume/' + series + '/' + encodeURIComponent(volume) + '/';
+    } else {
+        // No volume selected — just filter on search page
+        select.form.elements['fragment'].value = '';
+        select.form.submit();
+    }
+}
+
 // Auto-redirect when fragment is selected
 document.getElementById('fragment').addEventListener('change', function() {
     if (this.value) {
