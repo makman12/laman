@@ -713,6 +713,7 @@ def _build_volume_network(volume_pairs, detect_communities):
     q_filter = Q()
     for series_id, volume in volume_pairs:
         q_filter |= Q(series_id=series_id, fragment_number__startswith=f'{volume}.')
+        q_filter |= Q(series_id=series_id, fragment_number=volume)
     fragment_ids = list(
         Fragment.objects.filter(q_filter).values_list('id', flat=True)
     )
