@@ -104,7 +104,7 @@
     // -------------------------------------------------------------------------
     var svgEl, containerEl, searchInput, autocompleteEl, chipsEl,
         degreeContainer, statsBar, loadingEl, emptyEl, tooltipEl, networkPage,
-        clearBtn, exportPngBtn, exportGexfBtn;
+        clearBtn, exportPngBtn, exportGexfBtn, revealZone;
 
     // Cached autocomplete results for click handling
     var lastAutocompleteResults = [];
@@ -139,6 +139,38 @@
         // Export buttons
         exportPngBtn.addEventListener('click', exportPng);
         exportGexfBtn.addEventListener('click', exportGexf);
+
+        // Compact mode — hover reveal zone
+        revealZone = document.getElementById('network-reveal-zone');
+        var revealTimeout = null;
+        var headerEl = document.querySelector('header');
+        var navEl = document.querySelector('nav');
+
+        function showTopbar() {
+            if (revealTimeout) clearTimeout(revealTimeout);
+            document.body.classList.add('show-topbar');
+            // Position nav right below header
+            if (headerEl && navEl) {
+                navEl.style.top = headerEl.offsetHeight + 'px';
+            }
+        }
+
+        function hideTopbar() {
+            revealTimeout = setTimeout(function() {
+                document.body.classList.remove('show-topbar');
+            }, 300);
+        }
+
+        revealZone.addEventListener('mouseenter', showTopbar);
+        revealZone.addEventListener('mouseleave', hideTopbar);
+        if (headerEl) {
+            headerEl.addEventListener('mouseenter', showTopbar);
+            headerEl.addEventListener('mouseleave', hideTopbar);
+        }
+        if (navEl) {
+            navEl.addEventListener('mouseenter', showTopbar);
+            navEl.addEventListener('mouseleave', hideTopbar);
+        }
 
         // Tab clicks
         document.querySelectorAll('.network-tab').forEach(function(tab) {
@@ -413,6 +445,7 @@
 
         emptyEl.style.display = 'none';
         updateStats(data);
+        document.body.classList.add('network-compact');
 
         var nodeCount = data.nodes.length;
         var isLarge = nodeCount >= LARGE_THRESHOLD;
@@ -545,6 +578,7 @@
         statsBar.style.display = 'none';
         exportPngBtn.style.display = 'none';
         exportGexfBtn.style.display = 'none';
+        document.body.classList.remove('network-compact', 'show-topbar');
     }
 
     function updateStats(data) {
@@ -595,7 +629,7 @@
         var img = new Image();
         img.onload = function() {
             var canvas = document.createElement('canvas');
-            var scale = 2; // Retina quality
+            var scale = 5; // High resolution
             canvas.width = width * scale;
             canvas.height = height * scale;
             var ctx = canvas.getContext('2d');

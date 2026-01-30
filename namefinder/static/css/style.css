@@ -2088,6 +2088,85 @@ tr.reverted .status-badge {
     flex: 1;
 }
 
+/* Compact mode — collapses header/nav/footer on the network page */
+body.network-compact header,
+body.network-compact nav,
+body.network-compact footer {
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+body.network-compact header {
+    transform: translateY(-100%);
+    opacity: 0;
+    height: 0;
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+}
+
+body.network-compact nav {
+    transform: translateY(-100%);
+    opacity: 0;
+    height: 0;
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+}
+
+body.network-compact footer {
+    display: none;
+}
+
+body.network-compact .network-page {
+    height: 100vh;
+}
+
+body.network-compact main {
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+/* Hover reveal zone at top of page */
+#network-reveal-zone {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 8px;
+    z-index: 10001;
+    display: none;
+}
+
+body.network-compact #network-reveal-zone {
+    display: block;
+}
+
+/* When reveal is active, show header and nav as fixed overlay */
+body.network-compact.show-topbar header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10000;
+    transform: translateY(0);
+    opacity: 1;
+    height: auto;
+    overflow: visible;
+    padding: 1rem 2rem;
+}
+
+body.network-compact.show-topbar nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    z-index: 10000;
+    transform: translateY(0);
+    opacity: 1;
+    height: auto;
+    overflow: visible;
+    padding: 0.5rem 2rem;
+}
+
 /* Fullscreen mode */
 .network-page.fullscreen {
     position: fixed;
