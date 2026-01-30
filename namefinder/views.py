@@ -163,17 +163,19 @@ def name_detail(request, pk):
 
 
 def fragment_search(request):
-    """Search page for fragments with series/fragment dropdowns"""
+    """Search page for fragments with series/volume/fragment dropdowns"""
     selected_series = request.GET.get('series', '')
+    selected_volume = request.GET.get('volume', '')
     selected_fragment = request.GET.get('fragment', '')
-    
+
     series_list = Series.objects.annotate(
         fragment_count=Count('fragments')
     ).order_by('name')
-    
+
     fragments_for_series = None
+    volumes_for_series = []
     selected_series_name = ''
-    
+
     if selected_series:
         try:
             series_obj = Series.objects.get(pk=selected_series)
@@ -181,17 +183,34 @@ def fragment_search(request):
             fragments_for_series = Fragment.objects.filter(
                 series_id=selected_series
             ).select_related('publication_type').prefetch_related('instances').order_by('fragment_number')
+
+            # Extract distinct volumes from fragment numbers (part before the dot)
+            all_numbers = fragments_for_series.values_list('fragment_number', flat=True)
+            volume_set = set()
+            for num in all_numbers:
+                if '.' in num:
+                    volume_set.add(num.split('.')[0])
+            # Sort numerically where possible, alphabetically otherwise
+            volumes_for_series = sorted(volume_set, key=lambda v: (int(v) if v.isdigit() else float('inf'), v))
+
+            # Filter by volume if selected
+            if selected_volume:
+                fragments_for_series = fragments_for_series.filter(
+                    fragment_number__startswith=selected_volume + '.'
+                )
         except Series.DoesNotExist:
             pass
-    
+
     context = {
         'series_list': series_list,
         'fragments_for_series': fragments_for_series,
+        'volumes_for_series': volumes_for_series,
         'selected_series': selected_series,
         'selected_series_name': selected_series_name,
+        'selected_volume': selected_volume,
         'selected_fragment': selected_fragment,
     }
-    
+
     return render(request, 'namefinder/fragment_search.html', context)
 
 
