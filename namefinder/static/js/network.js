@@ -103,7 +103,8 @@
     // DOM references
     // -------------------------------------------------------------------------
     var svgEl, containerEl, searchInput, autocompleteEl, chipsEl,
-        degreeContainer, statsBar, loadingEl, emptyEl, tooltipEl, networkPage, clearBtn;
+        degreeContainer, statsBar, loadingEl, emptyEl, tooltipEl, networkPage,
+        clearBtn, exportPngBtn, exportGexfBtn;
 
     // Cached autocomplete results for click handling
     var lastAutocompleteResults = [];
@@ -124,6 +125,8 @@
         tooltipEl = d3.select('#network-tooltip');
         networkPage = document.getElementById('network-page');
         clearBtn = document.getElementById('clear-btn');
+        exportPngBtn = document.getElementById('export-png-btn');
+        exportGexfBtn = document.getElementById('export-gexf-btn');
 
         // Clear button
         clearBtn.addEventListener('click', function() {
@@ -132,6 +135,10 @@
             renderChips();
             clearNetwork();
         });
+
+        // Export buttons
+        exportPngBtn.addEventListener('click', exportPng);
+        exportGexfBtn.addEventListener('click', exportGexf);
 
         // Tab clicks
         document.querySelectorAll('.network-tab').forEach(function(tab) {
@@ -536,6 +543,8 @@
         emptyEl.style.display = 'flex';
         emptyEl.innerHTML = '<p>Select items above to generate a network.</p><p class="text-muted">Names that appear together on the same fragments will be connected.</p>';
         statsBar.style.display = 'none';
+        exportPngBtn.style.display = 'none';
+        exportGexfBtn.style.display = 'none';
     }
 
     function updateStats(data) {
@@ -550,6 +559,135 @@
             commContainer.style.display = 'none';
         }
         statsBar.style.display = 'flex';
+        exportPngBtn.style.display = 'inline-block';
+        exportGexfBtn.style.display = 'inline-block';
+    }
+
+    // -------------------------------------------------------------------------
+    // Export functions
+    // -------------------------------------------------------------------------
+    function exportPng() {
+        var svgNode = document.getElementById('network-svg');
+        var svgRect = svgNode.getBoundingClientRect();
+        var width = svgRect.width;
+        var height = svgRect.height;
+
+        // Clone SVG and resolve CSS variables to concrete values for the canvas
+        var clone = svgNode.cloneNode(true);
+        var computedStyle = getComputedStyle(document.documentElement);
+        var textColor = computedStyle.getPropertyValue('--text-color').trim() || '#333';
+        var textMuted = computedStyle.getPropertyValue('--text-muted').trim() || '#999';
+        var bgColor = computedStyle.getPropertyValue('--background-color').trim() || '#ffffff';
+
+        // Replace CSS variable references in the clone
+        clone.querySelectorAll('line[stroke="var(--text-muted)"]').forEach(function(el) {
+            el.setAttribute('stroke', textMuted);
+        });
+        clone.querySelectorAll('text[fill="var(--text-color)"]').forEach(function(el) {
+            el.setAttribute('fill', textColor);
+        });
+
+        clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        var svgData = new XMLSerializer().serializeToString(clone);
+        var svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+        var url = URL.createObjectURL(svgBlob);
+
+        var img = new Image();
+        img.onload = function() {
+            var canvas = document.createElement('canvas');
+            var scale = 2; // Retina quality
+            canvas.width = width * scale;
+            canvas.height = height * scale;
+            var ctx = canvas.getContext('2d');
+            ctx.scale(scale, scale);
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(img, 0, 0, width, height);
+            URL.revokeObjectURL(url);
+
+            var a = document.createElement('a');
+            a.download = 'laman-network.png';
+            a.href = canvas.toDataURL('image/png');
+            a.click();
+        };
+        img.src = url;
+    }
+
+    function exportGexf() {
+        if (!currentData || !currentData.nodes.length) return;
+
+        var xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+        xml += '<gexf xmlns="http://gexf.net/1.3" version="1.3">\n';
+        xml += '  <meta>\n';
+        xml += '    <creator>LAMAN</creator>\n';
+        xml += '    <description>Name co-occurrence network exported from LAMAN</description>\n';
+        xml += '  </meta>\n';
+        xml += '  <graph defaultedgetype="undirected">\n';
+
+        // Node attributes
+        xml += '    <attributes class="node">\n';
+        xml += '      <attribute id="0" title="name_type" type="string"/>\n';
+        xml += '      <attribute id="1" title="connections" type="integer"/>\n';
+        xml += '      <attribute id="2" title="attestations" type="integer"/>\n';
+        xml += '      <attribute id="3" title="is_ego" type="boolean"/>\n';
+        if (currentData.nodes[0].community !== undefined) {
+            xml += '      <attribute id="4" title="community" type="integer"/>\n';
+        }
+        xml += '    </attributes>\n';
+
+        // Edge attributes
+        xml += '    <attributes class="edge">\n';
+        xml += '      <attribute id="0" title="weight" type="integer"/>\n';
+        xml += '    </attributes>\n';
+
+        // Nodes
+        xml += '    <nodes>\n';
+        currentData.nodes.forEach(function(n) {
+            var label = escapeXml(n.name);
+            xml += '      <node id="' + n.id + '" label="' + label + '">\n';
+            xml += '        <attvalues>\n';
+            xml += '          <attvalue for="0" value="' + escapeXml(n.name_type) + '"/>\n';
+            xml += '          <attvalue for="1" value="' + n.connections + '"/>\n';
+            xml += '          <attvalue for="2" value="' + n.attestations + '"/>\n';
+            xml += '          <attvalue for="3" value="' + (n.is_ego ? 'true' : 'false') + '"/>\n';
+            if (n.community !== undefined) {
+                xml += '          <attvalue for="4" value="' + n.community + '"/>\n';
+            }
+            xml += '        </attvalues>\n';
+            // Include position if available
+            if (n.x !== undefined && n.y !== undefined) {
+                xml += '        <viz:position xmlns:viz="http://gexf.net/1.3/viz" x="' +
+                    n.x.toFixed(2) + '" y="' + n.y.toFixed(2) + '"/>\n';
+            }
+            xml += '      </node>\n';
+        });
+        xml += '    </nodes>\n';
+
+        // Edges
+        xml += '    <edges>\n';
+        currentData.edges.forEach(function(e, idx) {
+            xml += '      <edge id="' + idx + '" source="' + e.source + '" target="' + e.target + '" weight="' + e.weight + '">\n';
+            xml += '        <attvalues>\n';
+            xml += '          <attvalue for="0" value="' + e.weight + '"/>\n';
+            xml += '        </attvalues>\n';
+            xml += '      </edge>\n';
+        });
+        xml += '    </edges>\n';
+
+        xml += '  </graph>\n';
+        xml += '</gexf>';
+
+        var blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
+        var a = document.createElement('a');
+        a.download = 'laman-network.gexf';
+        a.href = URL.createObjectURL(blob);
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
+
+    function escapeXml(str) {
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
     }
 
     // -------------------------------------------------------------------------
