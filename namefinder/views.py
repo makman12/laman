@@ -859,16 +859,4 @@ def instance_delete(request, pk):
 
 def network(request):
     """Network visualization page for co-occurrence of names"""
-    name_types = NameType.objects.all()
-    milieus = Milieu.objects.all()
-    
-    # Get all series for filter
-    series_list = Series.objects.annotate(
-        fragment_count=Count('fragments')
-    ).filter(fragment_count__gt=0).order_by('name')
-    
-    context = {
-        'name_types': name_types,
-        'series_list': series_list,
-    }
-    return render(request, 'namefinder/network.html', context)
+    return render(request, 'namefinder/network.html')

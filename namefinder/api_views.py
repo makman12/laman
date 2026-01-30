@@ -290,7 +290,6 @@ def api_fragment_delete(request, pk):
         return JsonResponse({'error': str(e)}, status=400)
 
 
-@login_required
 @require_http_methods(["GET"])
 def api_fragment_search(request):
     """Search fragments by series and number for autocomplete"""
@@ -567,173 +566,64 @@ try:
 except ImportError:
     HAS_LOUVAIN = False
 
-@require_http_methods(["GET"])
-def api_network_data(request):
-    """
-    Get network data for co-occurrence visualization.
-    Returns nodes (names) and edges (co-occurrences on same fragments).
-    Supports ego network mode for exploring connections of specific names.
-    Supports community detection using Louvain algorithm.
-    """
-    # Get filter parameters
-    name_types = request.GET.getlist('name_type')  # List of name type IDs
-    series_ids = request.GET.getlist('series')  # List of series IDs
-    min_connections = int(request.GET.get('min_connections', 1))
-    max_connections = int(request.GET.get('max_connections', 1000))
-    min_attestations = int(request.GET.get('min_attestations', 1))
-    
-    # Community detection parameter
-    detect_communities = request.GET.get('communities', 'false').lower() == 'true'
-    
-    # Ego network parameters - now supports multiple names
-    ego_name_ids = request.GET.getlist('ego_name')  # List of selected name IDs
-    ego_degree = int(request.GET.get('ego_degree', 1))  # Degree of separation
-    
-    # Build base fragment filter (by series)
-    fragment_filter = {}
-    if series_ids:
-        fragment_filter['fragment__series_id__in'] = series_ids
-    
-    # Build queryset for names
-    names_qs = Name.objects.all()
-    
-    if name_types:
-        names_qs = names_qs.filter(name_type_id__in=name_types)
-    
-    # Filter by minimum attestations
-    names_qs = names_qs.annotate(
-        attestation_count=Count('instances')
-    ).filter(attestation_count__gte=min_attestations)
-    
-    # Get all valid name IDs
-    valid_name_ids = set(names_qs.values_list('id', flat=True))
-    
-    # Build co-occurrence map: for each fragment, which names appear
+
+def _get_fragment_names(fragment_ids):
+    """Build mapping of fragment_id -> set of name_ids for given fragments."""
     fragment_names = defaultdict(set)
-    
-    instance_qs = Instance.objects.filter(name_id__in=valid_name_ids)
-    if fragment_filter:
-        instance_qs = instance_qs.filter(**fragment_filter)
-    
-    instances = instance_qs.values('fragment_id', 'name_id')
-    
-    for inst in instances:
-        if inst['fragment_id']:
-            fragment_names[inst['fragment_id']].add(inst['name_id'])
-    
-    # Count co-occurrences between names
+    instances = Instance.objects.filter(
+        fragment_id__in=fragment_ids
+    ).values_list('fragment_id', 'name_id')
+    for frag_id, name_id in instances:
+        if frag_id and name_id:
+            fragment_names[frag_id].add(name_id)
+    return fragment_names
+
+
+def _build_cooccurrence(fragment_names):
+    """Compute co-occurrence counts from fragment-names mapping."""
     cooccurrence = defaultdict(int)
-    for fragment_id, name_ids in fragment_names.items():
+    for frag_id, name_ids in fragment_names.items():
         name_list = list(name_ids)
         for i in range(len(name_list)):
             for j in range(i + 1, len(name_list)):
-                # Create sorted tuple for consistent key
                 pair = tuple(sorted([name_list[i], name_list[j]]))
                 cooccurrence[pair] += 1
-    
-    # Build adjacency list for ego network expansion
-    adjacency = defaultdict(set)
-    for (name1, name2) in cooccurrence.keys():
-        adjacency[name1].add(name2)
-        adjacency[name2].add(name1)
-    
-    # Count connections per name
+    return cooccurrence
+
+
+def _assemble_response(name_ids, cooccurrence, detect_communities, ego_ids=None):
+    """Build the JSON-serializable response dict for the network API."""
+    ego_ids = set(ego_ids or [])
+    name_ids = set(name_ids)
+
+    # Connection counts within the network
     connection_count = defaultdict(int)
-    for (name1, name2), count in cooccurrence.items():
-        connection_count[name1] += 1
-        connection_count[name2] += 1
-    
-    # Determine which names to include
-    if ego_name_ids:
-        # Ego network mode: expand from selected names by degree
-        ego_name_ids_set = set(int(id) for id in ego_name_ids)
-        
-        # For ego mode, we need to build adjacency from ALL names (not just filtered)
-        # First get all instances for the ego names to find co-occurring names
-        all_fragment_names = defaultdict(set)
-        all_instance_qs = Instance.objects.all()
-        if series_ids:
-            all_instance_qs = all_instance_qs.filter(fragment__series_id__in=series_ids)
-        
-        for inst in all_instance_qs.values('fragment_id', 'name_id'):
-            if inst['fragment_id'] and inst['name_id']:
-                all_fragment_names[inst['fragment_id']].add(inst['name_id'])
-        
-        # Build full adjacency
-        full_adjacency = defaultdict(set)
-        for fragment_id, name_ids in all_fragment_names.items():
-            name_list = list(name_ids)
-            for i in range(len(name_list)):
-                for j in range(i + 1, len(name_list)):
-                    full_adjacency[name_list[i]].add(name_list[j])
-                    full_adjacency[name_list[j]].add(name_list[i])
-        
-        # Expand from all ego names by degree
-        ego_names = set(ego_name_ids_set)
-        current_frontier = set(ego_name_ids_set)
-        
-        for d in range(ego_degree):
-            next_frontier = set()
-            for name_id in current_frontier:
-                next_frontier.update(full_adjacency.get(name_id, set()))
-            ego_names.update(next_frontier)
-            current_frontier = next_frontier - ego_names
-        
-        filtered_name_ids = ego_names
-        
-        # Recalculate connection counts for ego network
-        connection_count = defaultdict(int)
-        for name_id in filtered_name_ids:
-            connection_count[name_id] = len(full_adjacency.get(name_id, set()) & filtered_name_ids)
-        
-        # Rebuild cooccurrence for edges within ego network
-        cooccurrence = defaultdict(int)
-        for fragment_id, name_ids in all_fragment_names.items():
-            relevant = name_ids & filtered_name_ids
-            relevant_list = list(relevant)
-            for i in range(len(relevant_list)):
-                for j in range(i + 1, len(relevant_list)):
-                    pair = tuple(sorted([relevant_list[i], relevant_list[j]]))
-                    cooccurrence[pair] += 1
-    else:
-        # Standard mode: filter by connection count
-        filtered_name_ids = {
-            name_id for name_id, count in connection_count.items()
-            if min_connections <= count <= max_connections
-        }
-        
-        # If no connections filter applied (min=0), include isolated nodes
-        if min_connections == 0:
-            filtered_name_ids.update(valid_name_ids)
-        
-        # No ego names in global mode
-        ego_name_ids_set = set()
-    
-    # Community detection using Louvain algorithm
+    for (n1, n2) in cooccurrence:
+        if n1 in name_ids and n2 in name_ids:
+            connection_count[n1] += 1
+            connection_count[n2] += 1
+
+    # Community detection
     communities = {}
     num_communities = 0
-    if detect_communities and HAS_LOUVAIN and len(filtered_name_ids) > 1:
-        # Build networkx graph
+    if detect_communities and HAS_LOUVAIN and len(name_ids) > 1:
         G = nx.Graph()
-        G.add_nodes_from(filtered_name_ids)
-        for (name1, name2), weight in cooccurrence.items():
-            if name1 in filtered_name_ids and name2 in filtered_name_ids:
-                G.add_edge(name1, name2, weight=weight)
-        
-        # Run Louvain community detection
+        G.add_nodes_from(name_ids)
+        for (n1, n2), w in cooccurrence.items():
+            if n1 in name_ids and n2 in name_ids:
+                G.add_edge(n1, n2, weight=w)
         if G.number_of_edges() > 0:
             partition = community_louvain.best_partition(G, weight='weight', resolution=1.0)
             communities = partition
             num_communities = len(set(partition.values()))
-    
-    # Get name details for filtered names
+
+    # Fetch name details
     names_data = Name.objects.filter(
-        id__in=filtered_name_ids
+        id__in=name_ids
     ).select_related('name_type').annotate(
         attestation_count=Count('instances')
     )
-    
-    # Build nodes
+
     nodes = []
     for name in names_data:
         node = {
@@ -743,25 +633,18 @@ def api_network_data(request):
             'attestations': name.attestation_count,
             'connections': connection_count.get(name.id, 0),
         }
-        # Mark the ego nodes (can be multiple now)
-        if name.id in ego_name_ids_set:
+        if name.id in ego_ids:
             node['is_ego'] = True
-        # Add community ID if available
         if name.id in communities:
             node['community'] = communities[name.id]
         nodes.append(node)
-    
-    # Build edges (only between filtered names)
+
     edges = []
-    for (name1, name2), weight in cooccurrence.items():
-        if name1 in filtered_name_ids and name2 in filtered_name_ids:
-            edges.append({
-                'source': name1,
-                'target': name2,
-                'weight': weight,
-            })
-    
-    return JsonResponse({
+    for (n1, n2), w in cooccurrence.items():
+        if n1 in name_ids and n2 in name_ids:
+            edges.append({'source': n1, 'target': n2, 'weight': w})
+
+    return {
         'nodes': nodes,
         'edges': edges,
         'stats': {
@@ -769,24 +652,203 @@ def api_network_data(request):
             'total_edges': len(edges),
             'num_communities': num_communities,
         }
-    })
+    }
+
+
+def _build_names_network(name_ids, degree, detect_communities):
+    """Build network starting from specific names, expanding by degree of separation."""
+    ego_ids = set(name_ids)
+    current_frontier = set(name_ids)
+    all_name_ids = set(name_ids)
+
+    for d in range(degree):
+        frag_ids = set(
+            Instance.objects.filter(name_id__in=current_frontier)
+            .values_list('fragment_id', flat=True)
+        )
+        neighbor_names = set(
+            Instance.objects.filter(fragment_id__in=frag_ids)
+            .values_list('name_id', flat=True)
+        )
+        next_frontier = neighbor_names - all_name_ids
+        all_name_ids.update(neighbor_names)
+        current_frontier = next_frontier
+        if not current_frontier:
+            break
+
+    relevant_frag_ids = set(
+        Instance.objects.filter(name_id__in=all_name_ids)
+        .values_list('fragment_id', flat=True)
+    )
+    fragment_names = _get_fragment_names(relevant_frag_ids)
+
+    # Keep only fragments with 2+ names in the network
+    filtered_fragment_names = {
+        frag_id: (names & all_name_ids)
+        for frag_id, names in fragment_names.items()
+        if len(names & all_name_ids) > 1
+    }
+
+    cooccurrence = _build_cooccurrence(filtered_fragment_names)
+    return _assemble_response(all_name_ids, cooccurrence, detect_communities, ego_ids=ego_ids)
+
+
+def _build_fragment_based_network(fragment_ids, detect_communities):
+    """Build network from all names on the given fragments and their co-occurrences."""
+    fragment_names = _get_fragment_names(fragment_ids)
+
+    all_name_ids = set()
+    for names in fragment_names.values():
+        all_name_ids.update(names)
+
+    if not all_name_ids:
+        return _assemble_response(set(), defaultdict(int), detect_communities)
+
+    cooccurrence = _build_cooccurrence(fragment_names)
+    return _assemble_response(all_name_ids, cooccurrence, detect_communities)
+
+
+def _build_volume_network(volume_pairs, detect_communities):
+    """Build network from all names in the given volumes."""
+    q_filter = Q()
+    for series_id, volume in volume_pairs:
+        q_filter |= Q(series_id=series_id, fragment_number__startswith=f'{volume}.')
+    fragment_ids = list(
+        Fragment.objects.filter(q_filter).values_list('id', flat=True)
+    )
+    return _build_fragment_based_network(fragment_ids, detect_communities)
+
+
+def _build_cth_network(cth_ids, detect_communities):
+    """Build network from all names on fragments with the given CTH numbers."""
+    fragment_ids = list(
+        Fragment.objects.filter(cth__in=cth_ids).values_list('id', flat=True)
+    )
+    return _build_fragment_based_network(fragment_ids, detect_communities)
+
+
+_EMPTY_RESPONSE = {'nodes': [], 'edges': [], 'stats': {'total_nodes': 0, 'total_edges': 0, 'num_communities': 0}}
+
+
+@require_http_methods(["GET"])
+def api_network_data(request):
+    """
+    Unified network API. Accepts a mode parameter to determine the filter type.
+    GET /api/network/?mode=names&ids=1,2,3&degree=2&communities=true
+    GET /api/network/?mode=fragments&ids=10,20,30
+    GET /api/network/?mode=volumes&series_id=5&volume=4&series_id=6&volume=7
+    GET /api/network/?mode=cth&ids=381,382
+    """
+    mode = request.GET.get('mode', '')
+    detect_communities = request.GET.get('communities', 'false').lower() == 'true'
+
+    if mode == 'names':
+        ids_str = request.GET.get('ids', '')
+        name_ids = [int(x) for x in ids_str.split(',') if x.strip()]
+        degree = int(request.GET.get('degree', 1))
+        if not name_ids:
+            return JsonResponse(_EMPTY_RESPONSE)
+        data = _build_names_network(name_ids, degree, detect_communities)
+
+    elif mode == 'fragments':
+        ids_str = request.GET.get('ids', '')
+        fragment_ids = [int(x) for x in ids_str.split(',') if x.strip()]
+        if not fragment_ids:
+            return JsonResponse(_EMPTY_RESPONSE)
+        data = _build_fragment_based_network(fragment_ids, detect_communities)
+
+    elif mode == 'volumes':
+        series_ids = request.GET.getlist('series_id')
+        volumes = request.GET.getlist('volume')
+        if not series_ids or len(series_ids) != len(volumes):
+            return JsonResponse(_EMPTY_RESPONSE)
+        volume_pairs = list(zip([int(s) for s in series_ids], volumes))
+        data = _build_volume_network(volume_pairs, detect_communities)
+
+    elif mode == 'cth':
+        ids_str = request.GET.get('ids', '')
+        cth_ids = [x.strip() for x in ids_str.split(',') if x.strip()]
+        if not cth_ids:
+            return JsonResponse(_EMPTY_RESPONSE)
+        data = _build_cth_network(cth_ids, detect_communities)
+
+    else:
+        return JsonResponse({'error': 'Invalid mode'}, status=400)
+
+    return JsonResponse(data)
 
 
 @require_http_methods(["GET"])
 def api_name_search(request):
-    """Search names for autocomplete in network page"""
+    """Search names for autocomplete in network page."""
     q = request.GET.get('q', '').strip()
     if len(q) < 2:
         return JsonResponse({'results': []})
-    
+
     names = Name.objects.filter(
         Q(name__icontains=q) | Q(query__icontains=q)
     ).select_related('name_type')[:20]
-    
+
     results = [{
         'id': n.id,
         'name': n.name,
         'name_type': n.name_type.name if n.name_type else 'Unknown',
     } for n in names]
-    
+
+    return JsonResponse({'results': results})
+
+
+@require_http_methods(["GET"])
+def api_volume_search(request):
+    """Search volumes (series + volume number) for network autocomplete."""
+    q = request.GET.get('q', '').strip()
+    if len(q) < 1:
+        return JsonResponse({'results': []})
+
+    parts = q.split(None, 1)
+
+    if len(parts) == 2:
+        series_part, volume_part = parts
+        fragments = Fragment.objects.filter(
+            series__name__icontains=series_part,
+            fragment_number__istartswith=volume_part
+        ).select_related('series')
+    else:
+        fragments = Fragment.objects.filter(
+            series__name__icontains=q
+        ).select_related('series')
+
+    seen = {}
+    for f in fragments.only('series_id', 'series__name', 'fragment_number'):
+        vol = f.fragment_number.split('.')[0] if '.' in f.fragment_number else f.fragment_number
+        key = (f.series_id, vol)
+        if key not in seen:
+            seen[key] = f'{f.series.name} {vol}'
+
+    results = [
+        {'series_id': sid, 'volume': vol, 'label': label}
+        for (sid, vol), label in sorted(seen.items(), key=lambda x: x[1])
+    ]
+
+    return JsonResponse({'results': results[:50]})
+
+
+@require_http_methods(["GET"])
+def api_cth_search(request):
+    """Search CTH numbers for network autocomplete."""
+    q = request.GET.get('q', '').strip()
+    if len(q) < 1:
+        return JsonResponse({'results': []})
+
+    cth_values = (
+        Fragment.objects
+        .filter(cth__icontains=q)
+        .exclude(cth__isnull=True)
+        .exclude(cth='')
+        .values_list('cth', flat=True)
+        .distinct()
+        .order_by('cth')
+    )[:50]
+
+    results = [{'cth': c, 'label': f'CTH {c}'} for c in cth_values]
     return JsonResponse({'results': results})

@@ -53,6 +53,8 @@ urlpatterns = [
     path('api/revert/<int:pk>/', api_views.api_revert_change, name='api_revert_change'),
     path('api/network/', api_views.api_network_data, name='api_network_data'),
     path('api/name/search/', api_views.api_name_search, name='api_name_search'),
+    path('api/volume/search/', api_views.api_volume_search, name='api_volume_search'),
+    path('api/cth/search/', api_views.api_cth_search, name='api_cth_search'),
     
     # Network visualization
     path('network/', views.network, name='network'),

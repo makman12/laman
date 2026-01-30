@@ -1825,117 +1825,192 @@ tr.reverted .status-badge {
 
 .network-page {
     display: flex;
-    gap: 1rem;
+    flex-direction: column;
     height: calc(100vh - 200px);
     min-height: 500px;
+    gap: 0;
 }
 
-.network-sidebar {
-    width: 280px;
-    flex-shrink: 0;
-    background: var(--card-background);
-    border-radius: 8px;
-    padding: 1rem;
-    overflow-y: auto;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.network-sidebar h2 {
-    font-size: 1.1rem;
-    margin: 0 0 1rem 0;
-    padding-bottom: 0.5rem;
-    border-bottom: 2px solid var(--accent-color);
-}
-
-.network-sidebar h3 {
-    font-size: 0.9rem;
-    margin: 0 0 0.5rem 0;
-    color: var(--text-muted);
-}
-
-.network-sidebar .filter-section {
-    margin-bottom: 1.25rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.network-sidebar .filter-section:last-child {
-    border-bottom: none;
-}
-
-.checkbox-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-}
-
-.checkbox-label {
+/* Top toolbar */
+.network-toolbar-top {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 0.85rem;
-    cursor: pointer;
-}
-
-.checkbox-label input[type="checkbox"] {
-    min-width: auto;
-    width: 16px;
-    height: 16px;
-}
-
-.range-group {
-    display: flex;
-    flex-direction: column;
     gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--card-background);
+    border-radius: 8px 8px 0 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    flex-wrap: wrap;
 }
 
-.range-group label {
+.network-tabs {
     display: flex;
-    flex-direction: column;
     gap: 0.25rem;
-    font-size: 0.85rem;
 }
 
-.range-group input[type="number"] {
-    padding: 0.4rem;
+.network-tab {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--card-background);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.network-tab:hover {
+    border-color: var(--accent-color);
+    color: var(--text-color);
+}
+
+.network-tab.active {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: white;
+}
+
+/* Search container in toolbar */
+.network-search-container {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+    max-width: 400px;
+}
+
+.network-search-container input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
     border: 1px solid var(--border-color);
     border-radius: 4px;
     background: var(--card-background);
     color: var(--text-color);
-    width: 100%;
-    min-width: auto;
+    font-size: 0.9rem;
 }
 
-.range-group input[type="range"] {
-    width: 100%;
-    min-width: auto;
+.network-search-container .autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 250px;
+    overflow-y: auto;
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 200;
 }
 
-.btn-block {
-    width: 100%;
-    padding: 0.75rem;
+.autocomplete-item {
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.autocomplete-item:hover {
+    background: var(--background-color);
+}
+
+.autocomplete-item.text-muted {
+    cursor: default;
+    color: var(--text-muted);
+}
+
+/* Degree buttons in toolbar */
+.network-toolbar-top .degree-buttons {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.degree-btn {
+    padding: 0.35rem 0.6rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--card-background);
+    color: var(--text-color);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+}
+
+.degree-btn strong {
     font-size: 1rem;
 }
 
-.network-stats {
-    margin-top: 1rem;
-    padding: 0.75rem;
-    background: var(--background-color);
+.degree-btn small {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    display: block;
+}
+
+.degree-btn:hover {
+    border-color: var(--accent-color);
+}
+
+.degree-btn.active {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: white;
+}
+
+.degree-btn.active small {
+    color: rgba(255,255,255,0.8);
+}
+
+/* Chips row */
+.network-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0 1rem;
+    min-height: 0;
+}
+
+.network-chips:not(:empty) {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    background: var(--card-background);
+}
+
+.network-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: var(--accent-color);
+    color: white;
+    padding: 0.3rem 0.6rem;
     border-radius: 4px;
     font-size: 0.85rem;
 }
 
-.network-stats p {
-    margin: 0.25rem 0;
+.chip-remove {
+    background: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0 0.15rem;
+    opacity: 0.8;
+    line-height: 1;
 }
 
+.chip-remove:hover {
+    opacity: 1;
+}
+
+/* SVG container */
 .network-container {
     flex: 1;
     background: var(--card-background);
-    border-radius: 8px;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 #network-svg {
@@ -1986,17 +2061,29 @@ tr.reverted .status-badge {
     max-width: 250px;
 }
 
-/* Name type colors in sidebar */
-.name-type-person { color: #3498db; }
-.name-type-deity { color: #9b59b6; }
-.name-type-place { color: #27ae60; }
+/* Bottom stats bar */
+.network-stats-bar {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 0.5rem 1rem;
+    background: var(--card-background);
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 -1px 3px rgba(0,0,0,0.08);
+    font-size: 0.85rem;
+    flex-wrap: wrap;
+}
 
-/* Network toolbar */
-.network-toolbar {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    z-index: 100;
+.network-stats-bar label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.stats-spacer {
+    flex: 1;
 }
 
 /* Fullscreen mode */
@@ -2009,301 +2096,23 @@ tr.reverted .status-badge {
     z-index: 9999;
     height: 100vh;
     background: var(--background-color);
-    padding: 1rem;
-}
-
-.network-page.fullscreen .network-sidebar {
-    width: 300px;
-    max-height: calc(100vh - 2rem);
-}
-
-.network-page.fullscreen .network-container {
-    height: calc(100vh - 2rem);
-}
-
-/* Mode tabs */
-.mode-tabs {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-}
-
-.mode-tab {
-    flex: 1;
-    padding: 0.6rem 0.5rem;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    background: var(--card-background);
-    color: var(--text-muted);
-    cursor: pointer;
-    font-size: 0.85rem;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-
-.mode-tab:hover {
-    border-color: var(--accent-color);
-    color: var(--text-color);
-}
-
-.mode-tab.active {
-    background: var(--accent-color);
-    border-color: var(--accent-color);
-    color: white;
-}
-
-/* Mode panels */
-.mode-panel {
-    display: none;
-}
-
-.mode-panel.active {
-    display: block;
-}
-
-/* Degree buttons */
-.degree-buttons {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.degree-btn {
-    flex: 1;
     padding: 0.5rem;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    background: var(--card-background);
-    color: var(--text-color);
-    cursor: pointer;
-    text-align: center;
-    transition: all 0.2s;
-}
-
-.degree-btn strong {
-    display: block;
-    font-size: 1.2rem;
-}
-
-.degree-btn small {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-}
-
-.degree-btn:hover {
-    border-color: var(--accent-color);
-}
-
-.degree-btn.active {
-    background: var(--accent-color);
-    border-color: var(--accent-color);
-    color: white;
-}
-
-.degree-btn.active small {
-    color: rgba(255,255,255,0.8);
-}
-
-/* Settings panel (collapsible) */
-.settings-panel {
-    margin-top: 1rem;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    overflow: hidden;
-}
-
-.settings-panel summary {
-    padding: 0.75rem;
-    background: var(--card-background);
-    cursor: pointer;
-    font-weight: 500;
-    font-size: 0.9rem;
-    list-style: none;
-}
-
-.settings-panel summary::-webkit-details-marker {
-    display: none;
-}
-
-.settings-panel[open] summary {
-    border-bottom: 1px solid var(--border-color);
-}
-
-.settings-panel .range-group,
-.settings-panel .checkbox-group {
-    padding: 0.75rem;
-}
-
-/* Filter hint text */
-.filter-hint {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    margin: 0.25rem 0 0.5rem 0;
-}
-
-/* Ego search container */
-.ego-search-container {
-    position: relative;
-}
-
-.ego-search-container input {
-    width: 100%;
-    padding: 0.5rem;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background: var(--card-background);
-    color: var(--text-color);
-}
-
-.ego-search-container .autocomplete-dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    max-height: 200px;
-    overflow-y: auto;
-    background: var(--card-background);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    z-index: 100;
-}
-
-/* Ego selected list (multiple names) */
-.ego-selected-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-}
-
-.ego-selected-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    background: var(--accent-color);
-    color: white;
-    padding: 0.35rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.85rem;
-}
-
-.ego-selected-item .btn-clear {
-    font-size: 0.8rem;
-    padding: 0;
-    margin-left: 0.25rem;
-}
-
-/* Ego selected display (single - deprecated but kept for compatibility) */
-.ego-selected {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: var(--accent-color);
-    color: white;
-    padding: 0.5rem 0.75rem;
-    border-radius: 4px;
-    margin-top: 0.5rem;
-}
-
-.ego-selected #ego-name {
-    font-weight: 500;
-}
-
-.btn-clear {
-    background: transparent;
-    border: none;
-    color: white;
-    cursor: pointer;
-    font-size: 1rem;
-    padding: 0 0.25rem;
-    opacity: 0.8;
-}
-
-.btn-clear:hover {
-    opacity: 1;
-}
-
-/* Network Legend */
-.network-legend {
-    margin-top: 1rem;
-    padding: 0.75rem;
-    background: var(--background-color);
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
-}
-
-.network-legend h4 {
-    margin: 0 0 0.5rem 0;
-    font-size: 0.9rem;
-    color: var(--text-muted);
-}
-
-.legend-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.8rem;
-    margin-bottom: 0.25rem;
-}
-
-.legend-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    display: inline-block;
-}
-
-/* Series filter select */
-#series-filter,
-#ego-series-filter {
-    background: var(--card-background);
-    color: var(--text-color);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-}
-
-#series-filter option,
-#ego-series-filter option {
-    padding: 0.25rem;
-}
-
-/* Ego degree select */
-#ego-degree {
-    width: 100%;
-    padding: 0.5rem;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background: var(--card-background);
-    color: var(--text-color);
 }
 
 /* Network responsive */
-@media (max-width: 900px) {
-    .network-page {
-        flex-direction: column;
-        height: auto;
+@media (max-width: 768px) {
+    .network-toolbar-top {
+        flex-wrap: wrap;
     }
-    
-    .network-sidebar {
-        width: 100%;
-        max-height: 300px;
+
+    .network-search-container {
+        order: 10;
+        min-width: 100%;
+        max-width: 100%;
     }
-    
+
     .network-container {
-        height: 500px;
-    }
-    
-    .network-page.fullscreen {
-        flex-direction: column;
-    }
-    
-    .network-page.fullscreen .network-sidebar {
-        width: 100%;
-        max-height: 40vh;
-    }
-    
-    .network-page.fullscreen .network-container {
-        height: 55vh;
+        min-height: 400px;
     }
 }
 
