@@ -10,6 +10,7 @@
     // -------------------------------------------------------------------------
     let currentTab = 'names';
     let selectedItems = [];
+    let bulkLabel = null; // e.g. "CTH 1-20" when added via interval
     let degree = 1;
     let colorMode = 'type';
     let showLabels = true;
@@ -102,7 +103,7 @@
     // DOM references
     // -------------------------------------------------------------------------
     var svgEl, containerEl, searchInput, autocompleteEl, chipsEl,
-        degreeContainer, statsBar, loadingEl, emptyEl, tooltipEl, networkPage;
+        degreeContainer, statsBar, loadingEl, emptyEl, tooltipEl, networkPage, clearBtn;
 
     // Cached autocomplete results for click handling
     var lastAutocompleteResults = [];
@@ -122,6 +123,15 @@
         emptyEl = document.getElementById('network-empty');
         tooltipEl = d3.select('#network-tooltip');
         networkPage = document.getElementById('network-page');
+        clearBtn = document.getElementById('clear-btn');
+
+        // Clear button
+        clearBtn.addEventListener('click', function() {
+            selectedItems = [];
+            bulkLabel = null;
+            renderChips();
+            clearNetwork();
+        });
 
         // Tab clicks
         document.querySelectorAll('.network-tab').forEach(function(tab) {
@@ -195,6 +205,7 @@
     function switchTab(tab) {
         currentTab = tab;
         selectedItems = [];
+        bulkLabel = null;
         searchInput.value = '';
         autocompleteEl.style.display = 'none';
 
@@ -249,6 +260,11 @@
     document.addEventListener('click', function(e) {
         // "Add all" button
         if (e.target.closest('.autocomplete-add-all')) {
+            var query = searchInput.value.trim();
+            // Set a summary label for bulk additions (e.g. "CTH 1-20" or "KBo 1-100")
+            if (lastAutocompleteResults.length > 3) {
+                bulkLabel = query;
+            }
             lastAutocompleteResults.forEach(function(r) { addItem(r); });
             return;
         }
@@ -287,15 +303,37 @@
 
     function removeItem(index) {
         selectedItems.splice(index, 1);
+        if (selectedItems.length <= 5) bulkLabel = null;
         renderChips();
         scheduleNetworkUpdate();
     }
 
     function renderChips() {
+        // Toggle clear button
+        if (clearBtn) {
+            clearBtn.style.display = selectedItems.length > 0 ? 'inline-block' : 'none';
+        }
+
         if (selectedItems.length === 0) {
             chipsEl.innerHTML = '';
             return;
         }
+
+        // If bulk label is set and there are many items, show a summary chip
+        if (bulkLabel && selectedItems.length > 5) {
+            chipsEl.innerHTML = '<span class="network-chip">' +
+                escapeHtml(bulkLabel) + ' (' + selectedItems.length + ' items)' +
+                '<button type="button" class="chip-remove chip-clear-all">&times;</button>' +
+                '</span>';
+            chipsEl.querySelector('.chip-clear-all').addEventListener('click', function() {
+                selectedItems = [];
+                bulkLabel = null;
+                renderChips();
+                scheduleNetworkUpdate();
+            });
+            return;
+        }
+
         chipsEl.innerHTML = selectedItems.map(function(item, idx) {
             return '<span class="network-chip">' +
                 escapeHtml(item._label) +
@@ -303,7 +341,7 @@
                 '</span>';
         }).join('');
 
-        chipsEl.querySelectorAll('.chip-remove').forEach(function(btn) {
+        chipsEl.querySelectorAll('.chip-remove[data-index]').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 removeItem(parseInt(btn.dataset.index));
             });

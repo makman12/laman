@@ -1971,6 +1971,8 @@ tr.reverted .status-badge {
     gap: 0.4rem;
     padding: 0 1rem;
     min-height: 0;
+    max-height: 4.5rem;
+    overflow-y: auto;
 }
 
 .network-chips:not(:empty) {
