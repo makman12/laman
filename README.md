@@ -1,14 +1,7 @@
-# LAMAN - Lexicon of Ancient Mesopotamian and Anatolian Names
+# LAMAN
 
 A Django-based database for researching Hittite personal names, place names, and deities from cuneiform texts.
 
-## Features
-
-- Search names by various criteria (name, type, language, period)
-- View attestations with fragment references
-- Network visualization of name co-occurrences
-- Community detection in name networks
-- REST API for programmatic access
 
 ## Local Development
 
@@ -48,9 +41,5 @@ python manage.py runserver
 
 See [DEPLOY.md](DEPLOY.md) for full deployment instructions.
 
-## Database
-
-The database (`db.sqlite3`) is not included in the repository due to size.
-Contact the maintainers for access to the data.
 
 
