@@ -289,6 +289,10 @@ class Name(models.Model):
         default=False,
         help_text="Whether this name is uncertain"
     )
+    is_fragmentary = models.BooleanField(
+        default=False,
+        help_text="Whether this name is a fragmentary/incomplete reading (e.g. contains [ or …)"
+    )
     
     class Meta:
         verbose_name = "Name"

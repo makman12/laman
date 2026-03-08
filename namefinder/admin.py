@@ -83,8 +83,8 @@ class FragmentAdmin(admin.ModelAdmin):
 
 @admin.register(Name)
 class NameAdmin(admin.ModelAdmin):
-    list_display = ['id', 'original_id', 'name', 'name_type', 'writing_type', 'completeness', 'milieu', 'uncertain']
-    list_filter = ['name_type', 'writing_type', 'completeness', 'milieu', 'uncertain']
+    list_display = ['id', 'original_id', 'name', 'name_type', 'writing_type', 'completeness', 'milieu', 'uncertain', 'is_fragmentary']
+    list_filter = ['name_type', 'writing_type', 'completeness', 'milieu', 'uncertain', 'is_fragmentary']
     search_fields = ['name', 'query', 'variant_forms', 'correspondence']
     filter_horizontal = ['determinatives']
     ordering = ['query', 'name']
@@ -95,7 +95,7 @@ class NameAdmin(admin.ModelAdmin):
             'fields': ('original_id', 'name', 'query')
         }),
         ('Classification', {
-            'fields': ('name_type', 'writing_type', 'completeness', 'milieu', 'uncertain')
+            'fields': ('name_type', 'writing_type', 'completeness', 'milieu', 'uncertain', 'is_fragmentary')
         }),
         ('Determinatives', {
             'fields': ('determinatives',)

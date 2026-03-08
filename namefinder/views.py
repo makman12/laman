@@ -25,6 +25,7 @@ def index(request):
     selected_completeness = request.GET.get('completeness', '')
     selected_milieu = request.GET.get('milieu', '')
     selected_date = request.GET.get('date', '')
+    show_fragmentary = request.GET.get('fragmentary', '') == '1'
     page_number = request.GET.get('page', 1)
     
     # Get filter options
@@ -81,6 +82,8 @@ def index(request):
     if selected_date:
         # Filter names that have at least one instance on a fragment with this date
         names = names.filter(instances__fragment__date=selected_date).distinct()
+    if not show_fragmentary:
+        names = names.filter(is_fragmentary=False)
     
     # Order results
     names = names.order_by('query', 'name')
@@ -104,6 +107,7 @@ def index(request):
         'selected_completeness': selected_completeness,
         'selected_milieu': selected_milieu,
         'selected_date': selected_date,
+        'show_fragmentary': show_fragmentary,
     }
     
     return render(request, 'namefinder/index.html', context)
@@ -479,11 +483,12 @@ def export_search_csv(request):
     selected_writing_type = request.GET.get('writing_type', '')
     selected_completeness = request.GET.get('completeness', '')
     selected_milieu = request.GET.get('milieu', '')
-    
+    show_fragmentary = request.GET.get('fragmentary', '') == '1'
+
     names = Name.objects.select_related(
         'name_type', 'writing_type', 'completeness', 'milieu'
     )
-    
+
     # Apply search (same logic as index view)
     if query:
         if use_regex:
@@ -516,9 +521,11 @@ def export_search_csv(request):
         names = names.filter(completeness_id=selected_completeness)
     if selected_milieu:
         names = names.filter(milieu_id=selected_milieu)
-    
+    if not show_fragmentary:
+        names = names.filter(is_fragmentary=False)
+
     names = names.order_by('query', 'name')
-    
+
     # Create CSV response
     response = HttpResponse(content_type='text/csv')
     filename = f'laman_search_results{"_" + query if query else ""}.csv'
