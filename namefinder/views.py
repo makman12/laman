@@ -870,15 +870,56 @@ def data_problems(request):
             instance_count=Count('instances')
         ).order_by('name')
 
+        # Build list of non-fragmentary names for matching
+        non_frag = Name.objects.filter(is_fragmentary=False).select_related('name_type')
+        non_frag_list = [(n.pk, n.name, n.name_type.name if n.name_type else '') for n in non_frag]
+
+        def strip_frag(name):
+            """Strip fragmentary markers to get searchable root."""
+            s = name
+            for ch in ['[', ']', '…', '?', '(?)']:
+                s = s.replace(ch, '')
+            s = s.strip(' -–')
+            return s
+
+        def find_matches(frag_name):
+            """Find non-fragmentary names that could match a fragmentary name."""
+            root = strip_frag(frag_name).lower()
+            if len(root) < 2:
+                return []
+            matches = []
+            for pk, nname, ntype in non_frag_list:
+                if root in nname.lower():
+                    matches.append({'pk': pk, 'name': nname, 'type': ntype})
+            # Sort by name length (shorter = more likely exact match)
+            matches.sort(key=lambda m: len(m['name']))
+            return matches[:10]  # Cap at 10
+
         frag_with = [n for n in fragmentary_names if n.instance_count > 0]
         frag_without = [n for n in fragmentary_names if n.instance_count == 0]
 
-        # For the "with attestations" group, we need both name and count
-        frag_with_data = [{'name': n, 'instance_count': n.instance_count} for n in frag_with]
+        frag_with_data = []
+        for n in frag_with:
+            matches = find_matches(n.name)
+            frag_with_data.append({
+                'name': n,
+                'instance_count': n.instance_count,
+                'matches': matches,
+                'match_count': len(matches),
+            })
+
+        frag_without_data = []
+        for n in frag_without:
+            matches = find_matches(n.name)
+            frag_without_data.append({
+                'name': n,
+                'matches': matches,
+                'match_count': len(matches),
+            })
 
         context['fragmentary_count'] = fragmentary_names.count()
         context['frag_with_attestations'] = frag_with_data
-        context['frag_without_attestations'] = frag_without
+        context['frag_without_attestations'] = frag_without_data
 
     return render(request, 'namefinder/data_problems.html', context)
 

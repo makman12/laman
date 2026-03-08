@@ -47,7 +47,9 @@
                 <tr>
                     <th class="dp-sortable" data-col="0">Name</th>
                     <th class="dp-sortable" data-col="1">Type</th>
-                    <th class="dp-sortable dp-sorted-desc" data-col="2">Attestations</th>
+                    <th class="dp-sortable dp-sorted-desc" data-col="2">Att.</th>
+                    <th class="dp-sortable" data-col="3">Matches</th>
+                    <th>Possible Matches</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -57,6 +59,13 @@
                     <td class="dp-name-cell"><a href="{% url 'namefinder:name_detail' item.name.pk %}">{{ item.name.name|safe }}</a></td>
                     <td><span class="name-type-badge {{ item.name.name_type.name|default:'' }}">{{ item.name.name_type.name|default:"—" }}</span></td>
                     <td class="dp-num">{{ item.instance_count }}</td>
+                    <td class="dp-num">{{ item.match_count }}</td>
+                    <td class="dp-matches-cell">
+                        {% for m in item.matches %}
+                        <a href="{% url 'namefinder:name_detail' m.pk %}" class="dp-match-link" title="{{ m.type }}">{{ m.name }}</a>{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                        {% if not item.matches %}—{% endif %}
+                    </td>
                     <td>
                         <button class="dp-btn dp-btn-unlink" data-id="{{ item.name.pk }}" data-name="{{ item.name.name }}" data-count="{{ item.instance_count }}">
                             Unlink &amp; Delete
@@ -65,12 +74,19 @@
                 </tr>
                 {% endfor %}
                 {% for item in frag_without_attestations %}
-                <tr data-has="without" data-type="{{ item.name_type.name|default:"" }}">
-                    <td class="dp-name-cell"><a href="{% url 'namefinder:name_detail' item.pk %}">{{ item.name|safe }}</a></td>
-                    <td><span class="name-type-badge {{ item.name_type.name|default:'' }}">{{ item.name_type.name|default:"—" }}</span></td>
+                <tr data-has="without" data-type="{{ item.name.name_type.name|default:"" }}">
+                    <td class="dp-name-cell"><a href="{% url 'namefinder:name_detail' item.name.pk %}">{{ item.name.name|safe }}</a></td>
+                    <td><span class="name-type-badge {{ item.name.name_type.name|default:'' }}">{{ item.name.name_type.name|default:"—" }}</span></td>
                     <td class="dp-num">0</td>
+                    <td class="dp-num">{{ item.match_count }}</td>
+                    <td class="dp-matches-cell">
+                        {% for m in item.matches %}
+                        <a href="{% url 'namefinder:name_detail' m.pk %}" class="dp-match-link" title="{{ m.type }}">{{ m.name }}</a>{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                        {% if not item.matches %}—{% endif %}
+                    </td>
                     <td>
-                        <button class="dp-btn dp-btn-delete" data-id="{{ item.pk }}" data-name="{{ item.name }}">
+                        <button class="dp-btn dp-btn-delete" data-id="{{ item.name.pk }}" data-name="{{ item.name.name }}">
                             Delete
                         </button>
                     </td>
@@ -376,5 +392,21 @@ document.querySelectorAll('.modal').forEach(modal => {
     padding: 0.4rem 1.2rem;
 }
 .btn-warning:hover { background: #d35400; }
+
+/* Matches column */
+.dp-matches-cell {
+    font-size: 0.85rem;
+    max-width: 300px;
+    white-space: normal;
+    line-height: 1.6;
+}
+.dp-match-link {
+    color: var(--accent-color);
+    text-decoration: none;
+    white-space: nowrap;
+}
+.dp-match-link:hover {
+    text-decoration: underline;
+}
 </style>
 {% endblock %}
