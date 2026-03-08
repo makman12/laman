@@ -1,0 +1,242 @@
+{% extends 'namefinder/base.html' %}
+{% load static %}
+
+{% block title %}Search Attestations - LAMAN{% endblock %}
+
+{% block content %}
+<div class="search-section">
+    <h2 class="page-title">Search Attestations</h2>
+
+    <form method="get" action="{% url 'namefinder:attestation_search' %}" class="search-form">
+        <div class="search-row">
+            <div class="search-input-group" style="flex: 2;">
+                <label for="q">Search Query</label>
+                <input type="text" id="q" name="q" class="search-input"
+                       value="{{ query }}"
+                       placeholder="Search by spelling, name, fragment, line, or notes">
+            </div>
+            <div class="search-checkbox">
+                <input type="checkbox" id="unlinked" name="unlinked" value="1" {% if show_unlinked %}checked{% endif %}>
+                <label for="unlinked">Unlinked Only</label>
+            </div>
+            <button type="submit" class="search-btn">Search</button>
+        </div>
+
+        <div class="filters-section">
+            <div class="filter-group">
+                <label for="name_type">Type</label>
+                <select id="name_type" name="name_type" class="filter-select">
+                    <option value="">All Types</option>
+                    {% for type in name_types %}
+                    <option value="{{ type.id }}" {% if selected_name_type == type.id|stringformat:"s" %}selected{% endif %}>
+                        {{ type.name|title }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="writing_type">Writing Type</label>
+                <select id="writing_type" name="writing_type" class="filter-select">
+                    <option value="">All Writing Types</option>
+                    {% for type in writing_types %}
+                    <option value="{{ type.id }}" {% if selected_writing_type == type.id|stringformat:"s" %}selected{% endif %}>
+                        {{ type.name|title }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="determinative">Determinative</label>
+                <select id="determinative" name="determinative" class="filter-select">
+                    <option value="">All Determinatives</option>
+                    {% for det in determinatives %}
+                    <option value="{{ det.id }}" {% if selected_determinative == det.id|stringformat:"s" %}selected{% endif %}>
+                        {{ det.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="completeness">Completeness</label>
+                <select id="completeness" name="completeness" class="filter-select">
+                    <option value="">All</option>
+                    {% for type in completeness_types %}
+                    <option value="{{ type.id }}" {% if selected_completeness == type.id|stringformat:"s" %}selected{% endif %}>
+                        {{ type.name|title }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="series">Series</label>
+                <select id="series" name="series" class="filter-select">
+                    <option value="">All Series</option>
+                    {% for s in series_list %}
+                    <option value="{{ s.id }}" {% if selected_series == s.id|stringformat:"s" %}selected{% endif %}>
+                        {{ s.name }} ({{ s.instance_count }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </form>
+</div>
+
+{% if instances %}
+<div class="results-section">
+    <div class="results-header">
+        <p class="results-count">
+            Found {{ page_obj.paginator.count }} attestation{{ page_obj.paginator.count|pluralize }}
+            {% if query %}matching "{{ query }}"{% endif %}
+            {% if show_unlinked %}(unlinked only){% endif %}
+        </p>
+    </div>
+
+    <div class="attestation-table-wrapper">
+        <table class="attestation-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Fragment</th>
+                    <th>Line</th>
+                    <th>Spelling</th>
+                    <th>Type</th>
+                    <th>Writing</th>
+                    <th>Det.</th>
+                    <th>Title/Epithet</th>
+                    <th>Notes</th>
+                    {% if user.is_authenticated %}
+                    <th></th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for inst in instances %}
+                <tr class="{% if not inst.name %}unlinked-row{% endif %}">
+                    <td>
+                        {% if inst.name %}
+                        <a href="{% url 'namefinder:name_detail' inst.name.pk %}">{{ inst.name.name|safe }}</a>
+                        {% else %}
+                        <span class="text-muted">(unlinked)</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if inst.fragment %}
+                        <a href="{% url 'namefinder:fragment_detail' inst.fragment.pk %}">{{ inst.fragment.series_fragment }}</a>
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ inst.line|default:"—" }}</td>
+                    <td>{{ inst.spelling|default:"—"|safe }}</td>
+                    <td>{{ inst.instance_type.name|default:"—" }}</td>
+                    <td>{{ inst.writing_type.name|default:"—" }}</td>
+                    <td>{{ inst.determinative.name|default:"—" }}</td>
+                    <td>{{ inst.title_epithet|default:"—" }}</td>
+                    <td>{{ inst.notes|default:"—" }}</td>
+                    {% if user.is_authenticated %}
+                    <td>
+                        <a href="{% url 'namefinder:instance_edit' inst.pk %}" class="edit-link" title="Edit">Edit</a>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="pagination">
+        {% with qp=query nt=selected_name_type wt=selected_writing_type dt=selected_determinative cm=selected_completeness sr=selected_series ul=show_unlinked %}
+        {% if page_obj.has_previous %}
+        <a href="?{% if qp %}q={{ qp }}&{% endif %}{% if nt %}name_type={{ nt }}&{% endif %}{% if wt %}writing_type={{ wt }}&{% endif %}{% if dt %}determinative={{ dt }}&{% endif %}{% if cm %}completeness={{ cm }}&{% endif %}{% if sr %}series={{ sr }}&{% endif %}{% if ul %}unlinked=1&{% endif %}page=1">&laquo; First</a>
+        <a href="?{% if qp %}q={{ qp }}&{% endif %}{% if nt %}name_type={{ nt }}&{% endif %}{% if wt %}writing_type={{ wt }}&{% endif %}{% if dt %}determinative={{ dt }}&{% endif %}{% if cm %}completeness={{ cm }}&{% endif %}{% if sr %}series={{ sr }}&{% endif %}{% if ul %}unlinked=1&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+        {% endif %}
+
+        <span class="current">
+            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        </span>
+
+        {% if page_obj.has_next %}
+        <a href="?{% if qp %}q={{ qp }}&{% endif %}{% if nt %}name_type={{ nt }}&{% endif %}{% if wt %}writing_type={{ wt }}&{% endif %}{% if dt %}determinative={{ dt }}&{% endif %}{% if cm %}completeness={{ cm }}&{% endif %}{% if sr %}series={{ sr }}&{% endif %}{% if ul %}unlinked=1&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+        <a href="?{% if qp %}q={{ qp }}&{% endif %}{% if nt %}name_type={{ nt }}&{% endif %}{% if wt %}writing_type={{ wt }}&{% endif %}{% if dt %}determinative={{ dt }}&{% endif %}{% if cm %}completeness={{ cm }}&{% endif %}{% if sr %}series={{ sr }}&{% endif %}{% if ul %}unlinked=1&{% endif %}page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
+        {% endif %}
+        {% endwith %}
+    </div>
+    {% endif %}
+</div>
+{% elif query or show_unlinked or selected_name_type or selected_writing_type or selected_determinative or selected_completeness or selected_series %}
+<div class="results-section">
+    <p class="text-muted">No attestations found matching your search criteria.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.attestation-table-wrapper {
+    overflow-x: auto;
+    margin: 0 -1rem;
+    padding: 0 1rem;
+}
+
+.attestation-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.attestation-table th,
+.attestation-table td {
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color, #e0e0e0);
+    white-space: nowrap;
+}
+
+.attestation-table th {
+    background: var(--bg-secondary, #f5f5f5);
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.attestation-table td:nth-child(4),
+.attestation-table td:nth-child(8),
+.attestation-table td:nth-child(9) {
+    white-space: normal;
+    max-width: 200px;
+}
+
+.attestation-table tbody tr:hover {
+    background: var(--bg-hover, rgba(0,0,0,0.02));
+}
+
+.attestation-table a {
+    color: var(--accent-color, #2c5aa0);
+    text-decoration: none;
+}
+
+.attestation-table a:hover {
+    text-decoration: underline;
+}
+
+.unlinked-row {
+    background: rgba(231, 76, 60, 0.04);
+}
+
+.edit-link {
+    font-size: 0.8rem;
+    opacity: 0.5;
+}
+
+.edit-link:hover {
+    opacity: 1;
+}
+</style>
+{% endblock %}

@@ -861,6 +861,86 @@ def instance_delete(request, pk):
 
 
 # =============================================================================
+# Attestation Search
+# =============================================================================
+
+def attestation_search(request):
+    """Search page for attestations (instances) independent of names"""
+    query = request.GET.get('q', '').strip()
+    selected_name_type = request.GET.get('name_type', '')
+    selected_writing_type = request.GET.get('writing_type', '')
+    selected_determinative = request.GET.get('determinative', '')
+    selected_completeness = request.GET.get('completeness', '')
+    selected_series = request.GET.get('series', '')
+    show_unlinked = request.GET.get('unlinked', '') == '1'
+    page_number = request.GET.get('page', 1)
+
+    # Get filter options
+    name_types = NameType.objects.all()
+    writing_types = WritingType.objects.all()
+    determinatives = Determinative.objects.all()
+    completeness_types = CompletenessType.objects.all()
+    series_list = Series.objects.annotate(
+        instance_count=Count('fragments__instances')
+    ).filter(instance_count__gt=0).order_by('name')
+
+    instances = Instance.objects.select_related(
+        'name', 'name__name_type', 'fragment', 'fragment__series',
+        'instance_type', 'writing_type', 'determinative', 'completeness'
+    )
+
+    # Text search across spelling, name, fragment
+    if query:
+        instances = instances.filter(
+            Q(spelling__icontains=query) |
+            Q(name__name__icontains=query) |
+            Q(fragment__series_fragment__icontains=query) |
+            Q(line__icontains=query) |
+            Q(notes__icontains=query) |
+            Q(title_epithet__icontains=query)
+        )
+
+    # Apply filters
+    if selected_name_type:
+        instances = instances.filter(instance_type_id=selected_name_type)
+    if selected_writing_type:
+        instances = instances.filter(writing_type_id=selected_writing_type)
+    if selected_determinative:
+        instances = instances.filter(determinative_id=selected_determinative)
+    if selected_completeness:
+        instances = instances.filter(completeness_id=selected_completeness)
+    if selected_series:
+        instances = instances.filter(fragment__series_id=selected_series)
+    if show_unlinked:
+        instances = instances.filter(name__isnull=True)
+
+    instances = instances.order_by('fragment__series__name', 'fragment__fragment_number', 'line')
+
+    # Paginate
+    paginator = Paginator(instances, 50)
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'instances': page_obj,
+        'page_obj': page_obj,
+        'query': query,
+        'name_types': name_types,
+        'writing_types': writing_types,
+        'determinatives': determinatives,
+        'completeness_types': completeness_types,
+        'series_list': series_list,
+        'selected_name_type': selected_name_type,
+        'selected_writing_type': selected_writing_type,
+        'selected_determinative': selected_determinative,
+        'selected_completeness': selected_completeness,
+        'selected_series': selected_series,
+        'show_unlinked': show_unlinked,
+    }
+
+    return render(request, 'namefinder/attestation_search.html', context)
+
+
+# =============================================================================
 # Network Visualization
 # =============================================================================
 

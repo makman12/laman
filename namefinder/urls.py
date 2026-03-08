@@ -13,6 +13,7 @@ urlpatterns = [
     path('volume/<int:series_id>/<str:volume>/', views.volume_detail, name='volume_detail'),
     path('cth/', views.cth_search, name='cth_search'),
     path('cth/<str:cth_number>/', views.cth_detail, name='cth_detail'),
+    path('attestations/', views.attestation_search, name='attestation_search'),
     path('about/', views.about, name='about'),
     path('guide/', views.guide, name='guide'),
     
