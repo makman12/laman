@@ -1,0 +1,93 @@
+<!-- Report a Problem Button -->
+<button class="report-bug-btn" onclick="document.getElementById('report-modal').style.display='flex'" title="Report a problem with this entry">
+    Report a Problem
+</button>
+
+<!-- Report Modal -->
+<div id="report-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3>Report a Problem</h3>
+        <p class="text-muted">Report an issue with <strong>{{ report_entry_repr }}</strong></p>
+        <form id="report-form">
+            <div style="margin-bottom: 0.75rem;">
+                <label for="report-name" style="display:block; margin-bottom:0.25rem; font-size:0.85rem;">Your Name (optional)</label>
+                <input type="text" id="report-name" class="form-input" placeholder="Your name" style="width:100%;">
+            </div>
+            <div style="margin-bottom: 0.75rem;">
+                <label for="report-desc" style="display:block; margin-bottom:0.25rem; font-size:0.85rem;">What's wrong?</label>
+                <textarea id="report-desc" class="form-textarea" rows="4" placeholder="Describe the problem..." style="width:100%;" required></textarea>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-primary" id="report-submit-btn">Submit</button>
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('report-modal').style.display='none'">Cancel</button>
+            </div>
+        </form>
+        <div id="report-success" style="display:none; text-align:center; padding:1rem;">
+            <p style="color: var(--place-color); font-weight:500;">Report submitted. Thank you!</p>
+            <button class="btn btn-outline" onclick="document.getElementById('report-modal').style.display='none'">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('report-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('report-submit-btn');
+    const desc = document.getElementById('report-desc').value.trim();
+    if (!desc) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Submitting...';
+
+    try {
+        const response = await fetch('{% url "namefinder:api_submit_report" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                entry_type: '{{ report_entry_type }}',
+                entry_id: {{ report_entry_id }},
+                description: desc,
+                reporter_name: document.getElementById('report-name').value.trim()
+            })
+        });
+        const result = await response.json();
+        if (result.success) {
+            document.getElementById('report-form').style.display = 'none';
+            document.getElementById('report-success').style.display = 'block';
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Submit';
+    }
+});
+
+document.getElementById('report-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'report-modal') {
+        e.target.style.display = 'none';
+    }
+});
+</script>
+
+<style>
+.report-bug-btn {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    padding: 0.35rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.report-bug-btn:hover {
+    border-color: #e74c3c;
+    color: #e74c3c;
+}
+</style>

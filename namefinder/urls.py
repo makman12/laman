@@ -67,4 +67,6 @@ urlpatterns = [
     # Data problems API
     path('api/data-problems/delete-name/<int:pk>/', api_views.api_delete_problem_name, name='api_delete_problem_name'),
     path('api/data-problems/keep-name/<int:pk>/', api_views.api_keep_name, name='api_keep_name'),
+    path('api/report/', api_views.api_submit_report, name='api_submit_report'),
+    path('api/report/<int:pk>/resolve/', api_views.api_resolve_report, name='api_resolve_report'),
 ]

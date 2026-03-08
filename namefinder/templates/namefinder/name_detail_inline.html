@@ -41,6 +41,7 @@
         <button class="btn btn-danger btn-sm" onclick="confirmDelete('name', {{ name.id }}, '{{ name.name|escapejs }}')">Delete</button>
     </div>
     {% endif %}
+    {% include 'namefinder/includes/report_modal.html' %}
 </div>
 
 <div class="detail-section" id="name-details-section">

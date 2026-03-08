@@ -13,6 +13,9 @@
     <a href="?tab=fragmentary" class="problems-tab {% if active_tab == 'fragmentary' %}active{% endif %}">
         Fragmentary Names <span class="tab-count">{{ fragmentary_count }}</span>
     </a>
+    <a href="?tab=reports" class="problems-tab {% if active_tab == 'reports' %}active{% endif %}">
+        Reports <span class="tab-count">{{ report_count }}</span>
+    </a>
 </div>
 
 {% if active_tab == 'fragmentary' %}
@@ -98,6 +101,103 @@
         </table>
     </div>
 </div>
+{% endif %}
+
+{% if active_tab == 'reports' %}
+<div class="problems-content">
+    <div class="dp-toolbar">
+        <label>
+            <input type="checkbox" id="show-resolved" {% if show_resolved %}checked{% endif %}
+                   onchange="window.location.href='?tab=reports' + (this.checked ? '&resolved=1' : '')">
+            Show resolved/dismissed
+        </label>
+        <span class="dp-result-count">{{ reports|length }} report{{ reports|length|pluralize }}</span>
+    </div>
+
+    {% if reports %}
+    <div class="dp-table-wrapper">
+        <table class="dp-table">
+            <thead>
+                <tr>
+                    <th>Entry</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Reporter</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for report in reports %}
+                <tr id="report-row-{{ report.pk }}" class="{% if report.status != 'open' %}dp-resolved{% endif %}">
+                    <td class="dp-name-cell">
+                        {% if report.entry_type == 'name' %}
+                        <a href="{% url 'namefinder:name_detail' report.entry_id %}">{{ report.entry_repr }}</a>
+                        {% elif report.entry_type == 'fragment' %}
+                        <a href="{% url 'namefinder:fragment_detail' report.entry_id %}">{{ report.entry_repr }}</a>
+                        {% else %}
+                        {{ report.entry_repr }}
+                        {% endif %}
+                    </td>
+                    <td><span class="name-type-badge">{{ report.entry_type }}</span></td>
+                    <td style="max-width:300px;">{{ report.description }}</td>
+                    <td>{{ report.reporter_name|default:"Anonymous" }}</td>
+                    <td style="white-space:nowrap;">{{ report.created_at|date:"Y-m-d H:i" }}</td>
+                    <td>
+                        {% if report.status == 'open' %}
+                        <span class="report-status-open">Open</span>
+                        {% elif report.status == 'resolved' %}
+                        <span class="report-status-resolved">Resolved</span>
+                        {% else %}
+                        <span class="report-status-dismissed">Dismissed</span>
+                        {% endif %}
+                    </td>
+                    <td class="dp-actions">
+                        {% if report.status == 'open' %}
+                        <button class="dp-btn dp-btn-keep" onclick="resolveReport({{ report.pk }}, 'resolved')">Resolve</button>
+                        <button class="dp-btn dp-btn-delete" onclick="resolveReport({{ report.pk }}, 'dismissed')">Dismiss</button>
+                        {% else %}
+                        <span class="text-muted" style="font-size:0.8rem;">
+                            by {{ report.resolved_by.username|default:"—" }}
+                        </span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-muted" style="padding:2rem; text-align:center;">No reports to show.</p>
+    {% endif %}
+</div>
+
+<script>
+async function resolveReport(pk, status) {
+    const csrfToken = '{{ csrf_token }}';
+    try {
+        const response = await fetch(`/api/report/${pk}/resolve/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: status })
+        });
+        const result = await response.json();
+        if (result.success) {
+            const row = document.getElementById(`report-row-${pk}`);
+            row.classList.add('dp-resolved');
+            const statusCell = row.children[5];
+            statusCell.innerHTML = `<span class="report-status-${status}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>`;
+            const actionsCell = row.children[6];
+            actionsCell.innerHTML = '<span class="text-muted" style="font-size:0.8rem;">just now</span>';
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+</script>
 {% endif %}
 
 <!-- Confirmation Modal -->
@@ -451,6 +551,26 @@ document.querySelectorAll('.modal').forEach(modal => {
 }
 .dp-match-link:hover {
     text-decoration: underline;
+}
+
+/* Report status */
+.report-status-open {
+    color: #e67e22;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+.report-status-resolved {
+    color: #27ae60;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+.report-status-dismissed {
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+.dp-resolved {
+    opacity: 0.6;
 }
 </style>
 {% endblock %}

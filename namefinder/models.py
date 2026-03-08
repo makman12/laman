@@ -555,3 +555,43 @@ class ChangeLog(models.Model):
                     changes.append(f"{key}: '{old_display}' → '{new_display}'")
             return "; ".join(changes) if changes else "No changes detected"
         return ""
+
+
+# =============================================================================
+# Data Reports (User-submitted bug reports)
+# =============================================================================
+
+class DataReport(models.Model):
+    """User-submitted reports about data problems on specific entries."""
+
+    STATUS_CHOICES = [
+        ('open', 'Open'),
+        ('resolved', 'Resolved'),
+        ('dismissed', 'Dismissed'),
+    ]
+
+    ENTRY_TYPE_CHOICES = [
+        ('name', 'Name'),
+        ('fragment', 'Fragment'),
+        ('instance', 'Attestation'),
+    ]
+
+    entry_type = models.CharField(max_length=20, choices=ENTRY_TYPE_CHOICES)
+    entry_id = models.PositiveIntegerField()
+    entry_repr = models.CharField(max_length=255, help_text="Display string of the reported entry")
+    description = models.TextField(help_text="Description of the problem")
+    reporter_name = models.CharField(max_length=100, blank=True, help_text="Name of the person reporting")
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='open')
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='resolved_reports'
+    )
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Data Report"
+        verbose_name_plural = "Data Reports"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"[{self.get_status_display()}] {self.entry_type}: {self.entry_repr}"

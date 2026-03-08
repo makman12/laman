@@ -9,7 +9,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .models import (
     Name, Instance, Fragment, Series, PublicationType,
-    NameType, WritingType, CompletenessType, Milieu, Determinative
+    NameType, WritingType, CompletenessType, Milieu, Determinative,
+    DataReport
 )
 from .forms import (
     LoginForm, NameForm, FragmentForm, InstanceForm, InstanceInlineForm
@@ -156,8 +157,12 @@ def name_detail(request, pk):
         'completeness_types': completeness_types,
         'milieus': milieus,
         'all_determinatives': all_determinatives,
+        # For report modal
+        'report_entry_type': 'name',
+        'report_entry_id': name.pk,
+        'report_entry_repr': name.name,
     }
-    
+
     return render(request, 'namefinder/name_detail.html', context)
 
 
@@ -387,8 +392,12 @@ def fragment_detail(request, pk):
         'writing_types': writing_types,
         'all_determinatives': all_determinatives,
         'all_names': all_names,
+        # For report modal
+        'report_entry_type': 'fragment',
+        'report_entry_id': fragment.pk,
+        'report_entry_repr': fragment.series_fragment,
     }
-    
+
     return render(request, 'namefinder/fragment_detail.html', context)
 
 
@@ -859,11 +868,26 @@ def data_problems(request):
     """Admin page listing data quality issues that need manual review"""
     active_tab = request.GET.get('tab', 'fragmentary')
 
+    # Counts for tabs
+    report_count = DataReport.objects.filter(status='open').count()
+    fragmentary_count = Name.objects.filter(is_fragmentary=True).count()
+
     context = {
         'active_tab': active_tab,
+        'report_count': report_count,
+        'fragmentary_count': fragmentary_count,
     }
 
-    if active_tab == 'fragmentary':
+    if active_tab == 'reports':
+        show_resolved = request.GET.get('resolved', '') == '1'
+        if show_resolved:
+            reports = DataReport.objects.all().order_by('-created_at')
+        else:
+            reports = DataReport.objects.filter(status='open').order_by('-created_at')
+        context['reports'] = reports
+        context['show_resolved'] = show_resolved
+
+    elif active_tab == 'fragmentary':
         fragmentary_names = Name.objects.filter(is_fragmentary=True).select_related(
             'name_type'
         ).annotate(
@@ -917,7 +941,6 @@ def data_problems(request):
                 'match_count': len(matches),
             })
 
-        context['fragmentary_count'] = fragmentary_names.count()
         context['frag_with_attestations'] = frag_with_data
         context['frag_without_attestations'] = frag_without_data
 

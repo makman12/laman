@@ -35,6 +35,7 @@
         <button class="btn btn-danger btn-sm" onclick="confirmDelete('fragment', {{ fragment.id }}, '{{ fragment.series_fragment|escapejs }}')">Delete</button>
     </div>
     {% endif %}
+    {% include 'namefinder/includes/report_modal.html' %}
 </div>
 
 <div class="detail-section" id="details-section">

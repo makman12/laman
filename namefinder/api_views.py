@@ -7,7 +7,7 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect
 from django.db.models import Q
-from .models import Name, Instance, Fragment, Series, NameType, WritingType, CompletenessType, Milieu, Determinative, ChangeLog
+from .models import Name, Instance, Fragment, Series, NameType, WritingType, CompletenessType, Milieu, Determinative, ChangeLog, DataReport
 
 
 def get_name_data(name):
@@ -587,6 +587,64 @@ def api_delete_problem_name(request, pk):
         return JsonResponse({'error': 'Name not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
+
+
+@require_http_methods(["POST"])
+@csrf_protect
+def api_submit_report(request):
+    """Submit a data problem report. Open to all users (no login required)."""
+    try:
+        data = json.loads(request.body)
+        entry_type = data.get('entry_type', '')
+        entry_id = data.get('entry_id')
+        description = data.get('description', '').strip()
+        reporter_name = data.get('reporter_name', '').strip()
+
+        if entry_type not in ('name', 'fragment', 'instance'):
+            return JsonResponse({'error': 'Invalid entry type'}, status=400)
+        if not entry_id or not description:
+            return JsonResponse({'error': 'Entry ID and description are required'}, status=400)
+
+        # Get display string
+        model_map = {'name': Name, 'fragment': Fragment, 'instance': Instance}
+        try:
+            obj = model_map[entry_type].objects.get(pk=entry_id)
+            entry_repr = str(obj)[:255]
+        except model_map[entry_type].DoesNotExist:
+            return JsonResponse({'error': 'Entry not found'}, status=404)
+
+        report = DataReport.objects.create(
+            entry_type=entry_type,
+            entry_id=entry_id,
+            entry_repr=entry_repr,
+            description=description,
+            reporter_name=reporter_name,
+        )
+        return JsonResponse({'success': True, 'id': report.pk})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_protect
+def api_resolve_report(request, pk):
+    """Resolve or dismiss a data report."""
+    try:
+        data = json.loads(request.body) if request.body else {}
+        status = data.get('status', 'resolved')
+        if status not in ('resolved', 'dismissed'):
+            return JsonResponse({'error': 'Invalid status'}, status=400)
+
+        from django.utils import timezone
+        report = DataReport.objects.get(pk=pk)
+        report.status = status
+        report.resolved_by = request.user
+        report.resolved_at = timezone.now()
+        report.save()
+        return JsonResponse({'success': True})
+    except DataReport.DoesNotExist:
+        return JsonResponse({'error': 'Report not found'}, status=404)
 
 
 @login_required
