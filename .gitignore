@@ -127,3 +127,6 @@ OLD PROJECT/
 
 # Data structure folder (source Excel files)
 Data Structure/
+
+# Legacy data (Excel imports)
+legacyData/
