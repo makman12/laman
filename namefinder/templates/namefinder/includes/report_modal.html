@@ -1,3 +1,4 @@
+{% if user.is_authenticated %}
 <!-- Report a Problem Button -->
 <button class="report-bug-btn" onclick="document.getElementById('report-modal').style.display='flex'" title="Report a problem with this entry">
     Report a Problem
@@ -9,10 +10,6 @@
         <h3>Report a Problem</h3>
         <p class="text-muted">Report an issue with <strong>{{ report_entry_repr }}</strong></p>
         <form id="report-form">
-            <div style="margin-bottom: 0.75rem;">
-                <label for="report-name" style="display:block; margin-bottom:0.25rem; font-size:0.85rem;">Your Name (optional)</label>
-                <input type="text" id="report-name" class="form-input" placeholder="Your name" style="width:100%;">
-            </div>
             <div style="margin-bottom: 0.75rem;">
                 <label for="report-desc" style="display:block; margin-bottom:0.25rem; font-size:0.85rem;">What's wrong?</label>
                 <textarea id="report-desc" class="form-textarea" rows="4" placeholder="Describe the problem..." style="width:100%;" required></textarea>
@@ -50,7 +47,7 @@ document.getElementById('report-form').addEventListener('submit', async (e) => {
                 entry_type: '{{ report_entry_type }}',
                 entry_id: {{ report_entry_id }},
                 description: desc,
-                reporter_name: document.getElementById('report-name').value.trim()
+                reporter_name: '{{ user.username }}'
             })
         });
         const result = await response.json();
@@ -91,3 +88,4 @@ document.getElementById('report-modal').addEventListener('click', (e) => {
     color: #e74c3c;
 }
 </style>
+{% endif %}

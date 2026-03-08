@@ -142,7 +142,7 @@
                     </td>
                     <td><span class="name-type-badge">{{ report.entry_type }}</span></td>
                     <td style="max-width:300px;">{{ report.description }}</td>
-                    <td>{{ report.reporter_name|default:"Anonymous" }}</td>
+                    <td>{{ report.reporter_name|default:"—" }}</td>
                     <td style="white-space:nowrap;">{{ report.created_at|date:"Y-m-d H:i" }}</td>
                     <td>
                         {% if report.status == 'open' %}
