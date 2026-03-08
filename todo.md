@@ -15,13 +15,17 @@
 - [x] 8. Delete Milieu filter from "Using Filters" section
 - [x] 9. Fix "Fragment Search" section: "catalog or publication number" + remove broken "Unknown" reference
 
-## Data Issues
+## ~~Data Issues~~ — MOSTLY DONE
 
-- [ ] 10. **"Unknown" attestations missing from database** — Attestations previously classified as "Unknown" (fragmentary occurrences) seem to have disappeared. Example: CHDS 2.128 no longer shows the fragmentary "Piha…" occurrence. Investigate whether deleted or filtered out. Restore if feasible — Micheluccio will then manually correct assignments.
+- [x] 10. **"Unknown" attestations restored** — 566 Unknown attestations imported from legacy xlsx, then the Unknown name was deleted and attestations unlinked. They now appear in the Attestations tab as unlinked records.
 
-- [ ] 11. **Nina Sole's fragmentary attestation entries** — Nina booked fragmentary attestations as independent names rather than linking to "Unknown". Needs manual correction by Micheluccio after item 10 is resolved.
+- [x] 11. **Fragmentary names system** — Added `is_fragmentary` flag, search toggle (hidden by default), visual marking. Data Problems page (`/data-problems/`) created for reviewing fragmentary names with possible match suggestions, keep/delete/unlink actions.
 
-- [ ] 12. **Update "Fragmentary Attestations" guide section** — Once items 10–11 are resolved, review and update the guide text. The current example (CHDS 2.128) doesn't work as described.
+- [x] 11b. **HiTop place name attestations imported** — 20,344 attestations from HiTop xlsx, 178 new place names created. Toponym attestation hide removed from views.
+
+- [ ] 12. **Update "Fragmentary Attestations" guide section** — Review and update guide text now that fragmentary system and attestations page are in place.
+
+- [ ] 12b. **Review remaining fragmentary names** — ~700 fragmentary names remain in Data Problems page. Use the keep/delete/unlink tools to clean up. Some unlinked attestations may need manual reassignment to correct names.
 
 ## Search & Filtering Features
 
