@@ -17,69 +17,60 @@
 
 {% if active_tab == 'fragmentary' %}
 <div class="problems-content">
-    <p class="problems-description">
-        Fragmentary names (containing <code>[</code>, <code>]</code>, <code>?</code>, <code>…</code>, <code>x</code>, or trailing <code>-</code>) that may need review.
-        Some may be deleted with their attestations unlinked; others may need to be kept.
-    </p>
+    <div class="dp-toolbar">
+        <div class="dp-filter-group">
+            <label for="dp-filter-has">Show:</label>
+            <select id="dp-filter-has">
+                <option value="all">All ({{ fragmentary_count }})</option>
+                <option value="with">With attestations ({{ frag_with_attestations|length }})</option>
+                <option value="without">Without attestations ({{ frag_without_attestations|length }})</option>
+            </select>
+        </div>
+        <div class="dp-filter-group">
+            <label for="dp-filter-type">Type:</label>
+            <select id="dp-filter-type">
+                <option value="all">All</option>
+                <option value="deity">Deity</option>
+                <option value="person">Person</option>
+                <option value="place">Place</option>
+            </select>
+        </div>
+        <div class="dp-filter-group">
+            <input type="text" id="dp-search" placeholder="Filter by name..." class="dp-search-input">
+        </div>
+        <span class="dp-result-count" id="dp-result-count"></span>
+    </div>
 
-    <div class="problems-group">
-        <h3 class="problems-group-title">
-            With Attestations <span class="tab-count">{{ frag_with_attestations|length }}</span>
-        </h3>
-        <p class="text-muted" style="margin-bottom: 1rem;">These names have linked attestations. Deleting them will unlink the attestations (not delete them).</p>
-
-        <table class="attestation-table">
+    <div class="dp-table-wrapper">
+        <table class="dp-table" id="dp-table">
             <thead>
                 <tr>
-                    <th>Name</th>
-                    <th>Type</th>
-                    <th>Attestations</th>
+                    <th class="dp-sortable" data-col="0">Name</th>
+                    <th class="dp-sortable" data-col="1">Type</th>
+                    <th class="dp-sortable dp-sorted-desc" data-col="2">Attestations</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in frag_with_attestations %}
-                <tr>
-                    <td><a href="{% url 'namefinder:name_detail' item.name.pk %}">{{ item.name.name|safe }}</a></td>
-                    <td>{{ item.name.name_type.name|default:"—" }}</td>
-                    <td>{{ item.instance_count }}</td>
+                <tr data-has="with" data-type="{{ item.name.name_type.name|default:"" }}">
+                    <td class="dp-name-cell"><a href="{% url 'namefinder:name_detail' item.name.pk %}">{{ item.name.name|safe }}</a></td>
+                    <td><span class="name-type-badge {{ item.name.name_type.name|default:'' }}">{{ item.name.name_type.name|default:"—" }}</span></td>
+                    <td class="dp-num">{{ item.instance_count }}</td>
                     <td>
-                        <button class="btn btn-sm btn-warning unlink-delete-btn"
-                                data-id="{{ item.name.pk }}"
-                                data-name="{{ item.name.name }}"
-                                data-count="{{ item.instance_count }}">
+                        <button class="dp-btn dp-btn-unlink" data-id="{{ item.name.pk }}" data-name="{{ item.name.name }}" data-count="{{ item.instance_count }}">
                             Unlink &amp; Delete
                         </button>
                     </td>
                 </tr>
                 {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-    <div class="problems-group" style="margin-top: 2rem;">
-        <h3 class="problems-group-title">
-            Without Attestations <span class="tab-count">{{ frag_without_attestations|length }}</span>
-        </h3>
-        <p class="text-muted" style="margin-bottom: 1rem;">These names have no attestations. They can be safely deleted.</p>
-
-        <table class="attestation-table">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Type</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
                 {% for item in frag_without_attestations %}
-                <tr>
-                    <td><a href="{% url 'namefinder:name_detail' item.pk %}">{{ item.name|safe }}</a></td>
-                    <td>{{ item.name_type.name|default:"—" }}</td>
+                <tr data-has="without" data-type="{{ item.name_type.name|default:"" }}">
+                    <td class="dp-name-cell"><a href="{% url 'namefinder:name_detail' item.pk %}">{{ item.name|safe }}</a></td>
+                    <td><span class="name-type-badge {{ item.name_type.name|default:'' }}">{{ item.name_type.name|default:"—" }}</span></td>
+                    <td class="dp-num">0</td>
                     <td>
-                        <button class="btn btn-sm btn-warning delete-btn"
-                                data-id="{{ item.pk }}"
-                                data-name="{{ item.name }}">
+                        <button class="dp-btn dp-btn-delete" data-id="{{ item.pk }}" data-name="{{ item.name }}">
                             Delete
                         </button>
                     </td>
@@ -107,29 +98,81 @@
 const csrfToken = '{{ csrf_token }}';
 let pendingAction = null;
 
-// Unlink attestations & delete name
-document.querySelectorAll('.unlink-delete-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const id = btn.dataset.id;
-        const name = btn.dataset.name;
-        const count = btn.dataset.count;
-        document.getElementById('confirm-message').innerHTML =
-            `Unlink <strong>${count}</strong> attestation(s) and delete name <strong>"${name}"</strong>?<br><small class="text-muted">Attestations will become unlinked, not deleted.</small>`;
-        pendingAction = { type: 'unlink-delete', id: id, row: btn.closest('tr') };
-        document.getElementById('confirm-modal').style.display = 'flex';
+// === Sorting ===
+const table = document.getElementById('dp-table');
+const tbody = table && table.querySelector('tbody');
+
+document.querySelectorAll('.dp-sortable').forEach(th => {
+    th.addEventListener('click', () => {
+        const col = parseInt(th.dataset.col);
+        const asc = th.classList.contains('dp-sorted-asc');
+
+        // Clear all sort indicators
+        document.querySelectorAll('.dp-sortable').forEach(h => {
+            h.classList.remove('dp-sorted-asc', 'dp-sorted-desc');
+        });
+
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        rows.sort((a, b) => {
+            let va = a.children[col].textContent.trim();
+            let vb = b.children[col].textContent.trim();
+            // Numeric sort for attestations column
+            if (col === 2) {
+                va = parseInt(va) || 0;
+                vb = parseInt(vb) || 0;
+                return asc ? vb - va : va - vb;
+            }
+            return asc ? vb.localeCompare(va) : va.localeCompare(vb);
+        });
+
+        th.classList.add(asc ? 'dp-sorted-desc' : 'dp-sorted-asc');
+        rows.forEach(r => tbody.appendChild(r));
     });
 });
 
-// Delete name (no attestations)
-document.querySelectorAll('.delete-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const id = btn.dataset.id;
-        const name = btn.dataset.name;
-        document.getElementById('confirm-message').innerHTML =
-            `Delete name <strong>"${name}"</strong>?`;
-        pendingAction = { type: 'delete', id: id, row: btn.closest('tr') };
-        document.getElementById('confirm-modal').style.display = 'flex';
+// === Filtering ===
+function applyFilters() {
+    const hasFilter = document.getElementById('dp-filter-has').value;
+    const typeFilter = document.getElementById('dp-filter-type').value;
+    const search = document.getElementById('dp-search').value.toLowerCase();
+    let visible = 0;
+
+    tbody.querySelectorAll('tr').forEach(row => {
+        const matchHas = hasFilter === 'all' || row.dataset.has === hasFilter;
+        const matchType = typeFilter === 'all' || row.dataset.type === typeFilter;
+        const matchSearch = !search || row.children[0].textContent.toLowerCase().includes(search);
+        const show = matchHas && matchType && matchSearch;
+        row.style.display = show ? '' : 'none';
+        if (show) visible++;
     });
+
+    document.getElementById('dp-result-count').textContent = `${visible} shown`;
+}
+
+document.getElementById('dp-filter-has').addEventListener('change', applyFilters);
+document.getElementById('dp-filter-type').addEventListener('change', applyFilters);
+document.getElementById('dp-search').addEventListener('input', applyFilters);
+applyFilters();
+
+// === Actions ===
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.dp-btn-unlink, .dp-btn-delete');
+    if (!btn) return;
+
+    const id = btn.dataset.id;
+    const name = btn.dataset.name;
+    const isUnlink = btn.classList.contains('dp-btn-unlink');
+    const count = btn.dataset.count || 0;
+
+    if (isUnlink) {
+        document.getElementById('confirm-message').innerHTML =
+            `Unlink <strong>${count}</strong> attestation(s) and delete <strong>${name}</strong>?<br><small class="text-muted">Attestations become unlinked, not deleted.</small>`;
+    } else {
+        document.getElementById('confirm-message').innerHTML =
+            `Delete <strong>${name}</strong>?`;
+    }
+    pendingAction = { unlink: isUnlink, id: id, row: btn.closest('tr') };
+    document.getElementById('confirm-modal').style.display = 'flex';
 });
 
 document.getElementById('confirm-action-btn').addEventListener('click', async () => {
@@ -141,17 +184,14 @@ document.getElementById('confirm-action-btn').addEventListener('click', async ()
     try {
         const response = await fetch(`/api/data-problems/delete-name/${pendingAction.id}/`, {
             method: 'POST',
-            headers: {
-                'X-CSRFToken': csrfToken,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ unlink: pendingAction.type === 'unlink-delete' })
+            headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ unlink: pendingAction.unlink })
         });
         const result = await response.json();
         if (result.success) {
-            pendingAction.row.style.opacity = '0.3';
-            pendingAction.row.style.pointerEvents = 'none';
+            pendingAction.row.remove();
             document.getElementById('confirm-modal').style.display = 'none';
+            applyFilters();
         } else {
             alert('Error: ' + result.error);
         }
@@ -167,9 +207,7 @@ document.getElementById('confirm-action-btn').addEventListener('click', async ()
 // Close modal on outside click
 document.querySelectorAll('.modal').forEach(modal => {
     modal.addEventListener('click', (e) => {
-        if (e.target.classList.contains('modal')) {
-            modal.style.display = 'none';
-        }
+        if (e.target.classList.contains('modal')) modal.style.display = 'none';
     });
 });
 </script>
@@ -183,7 +221,6 @@ document.querySelectorAll('.modal').forEach(modal => {
     border-bottom: 2px solid var(--border-color);
     margin-bottom: 1.5rem;
 }
-
 .problems-tab {
     padding: 0.75rem 1.5rem;
     text-decoration: none;
@@ -191,18 +228,12 @@ document.querySelectorAll('.modal').forEach(modal => {
     border-bottom: 2px solid transparent;
     margin-bottom: -2px;
     font-weight: 500;
-    transition: all 0.2s;
 }
-
-.problems-tab:hover {
-    color: var(--text-color);
-}
-
+.problems-tab:hover { color: var(--text-color); }
 .problems-tab.active {
     color: var(--accent-color);
     border-bottom-color: var(--accent-color);
 }
-
 .tab-count {
     background: var(--border-color);
     color: var(--text-muted);
@@ -211,33 +242,130 @@ document.querySelectorAll('.modal').forEach(modal => {
     border-radius: 10px;
     margin-left: 0.25rem;
 }
-
 .problems-tab.active .tab-count {
     background: var(--accent-color);
     color: #fff;
 }
 
-.problems-description {
-    margin-bottom: 1.5rem;
+/* Toolbar */
+.dp-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+}
+.dp-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.dp-filter-group label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+.dp-filter-group select,
+.dp-search-input {
+    padding: 0.35rem 0.6rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--background-color);
+    color: var(--text-color);
+    font-size: 0.85rem;
+}
+.dp-search-input { width: 180px; }
+.dp-result-count {
+    margin-left: auto;
+    font-size: 0.85rem;
     color: var(--text-muted);
 }
 
-.problems-description code {
-    background: var(--border-color);
-    padding: 0.1rem 0.3rem;
-    border-radius: 3px;
-    font-size: 0.85em;
+/* Table */
+.dp-table-wrapper {
+    overflow-x: auto;
+}
+.dp-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.dp-table th,
+.dp-table td {
+    padding: 0.6rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+.dp-table th {
+    background: var(--card-background);
+    color: var(--text-color);
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+.dp-sortable {
+    cursor: pointer;
+    user-select: none;
+}
+.dp-sortable::after {
+    content: ' \2195';
+    opacity: 0.3;
+    font-size: 0.75em;
+}
+.dp-sorted-asc::after {
+    content: ' \2191';
+    opacity: 1;
+}
+.dp-sorted-desc::after {
+    content: ' \2193';
+    opacity: 1;
+}
+.dp-table tbody tr:hover {
+    background: var(--background-color);
+}
+.dp-name-cell {
+    font-size: 1rem;
+}
+.dp-name-cell a {
+    color: var(--text-color);
+    text-decoration: none;
+    font-weight: 500;
+}
+.dp-name-cell a:hover {
+    color: var(--accent-color);
+    text-decoration: underline;
+}
+.dp-num {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
 }
 
-.problems-group-title {
-    margin-bottom: 0.5rem;
-    font-size: 1.1rem;
-}
-
-.btn-sm {
-    padding: 0.25rem 0.75rem;
+/* Action buttons */
+.dp-btn {
+    padding: 0.3rem 0.75rem;
     font-size: 0.8rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
 }
+.dp-btn-unlink {
+    background: #e67e22;
+    color: #fff;
+}
+.dp-btn-unlink:hover { background: #d35400; }
+.dp-btn-delete {
+    background: #e74c3c;
+    color: #fff;
+}
+.dp-btn-delete:hover { background: #c0392b; }
 
 .btn-warning {
     background: #e67e22;
@@ -245,10 +373,8 @@ document.querySelectorAll('.modal').forEach(modal => {
     border: none;
     border-radius: 4px;
     cursor: pointer;
+    padding: 0.4rem 1.2rem;
 }
-
-.btn-warning:hover {
-    background: #d35400;
-}
+.btn-warning:hover { background: #d35400; }
 </style>
 {% endblock %}
