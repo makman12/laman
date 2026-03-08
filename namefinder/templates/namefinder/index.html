@@ -123,19 +123,21 @@
     
     {% if page_obj.paginator.num_pages > 1 %}
     <div class="pagination">
+        {% with qp=query rg=use_regex nt=selected_name_type wt=selected_writing_type cm=selected_completeness ml=selected_milieu fr=show_fragmentary %}
         {% if page_obj.has_previous %}
-        <a href="?{% if query %}q={{ query }}&{% endif %}{% if use_regex %}regex=1&{% endif %}{% if selected_name_type %}name_type={{ selected_name_type }}&{% endif %}{% if selected_writing_type %}writing_type={{ selected_writing_type }}&{% endif %}{% if selected_completeness %}completeness={{ selected_completeness }}&{% endif %}{% if selected_milieu %}milieu={{ selected_milieu }}&{% endif %}page=1">&laquo; First</a>
-        <a href="?{% if query %}q={{ query }}&{% endif %}{% if use_regex %}regex=1&{% endif %}{% if selected_name_type %}name_type={{ selected_name_type }}&{% endif %}{% if selected_writing_type %}writing_type={{ selected_writing_type }}&{% endif %}{% if selected_completeness %}completeness={{ selected_completeness }}&{% endif %}{% if selected_milieu %}milieu={{ selected_milieu }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+        <a href="?{% if qp %}q={{ qp }}&{% endif %}{% if rg %}regex=1&{% endif %}{% if nt %}name_type={{ nt }}&{% endif %}{% if wt %}writing_type={{ wt }}&{% endif %}{% if cm %}completeness={{ cm }}&{% endif %}{% if ml %}milieu={{ ml }}&{% endif %}{% if fr %}fragmentary=1&{% endif %}page=1">&laquo; First</a>
+        <a href="?{% if qp %}q={{ qp }}&{% endif %}{% if rg %}regex=1&{% endif %}{% if nt %}name_type={{ nt }}&{% endif %}{% if wt %}writing_type={{ wt }}&{% endif %}{% if cm %}completeness={{ cm }}&{% endif %}{% if ml %}milieu={{ ml }}&{% endif %}{% if fr %}fragmentary=1&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
         {% endif %}
-        
+
         <span class="current">
             Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
         </span>
-        
+
         {% if page_obj.has_next %}
-        <a href="?{% if query %}q={{ query }}&{% endif %}{% if use_regex %}regex=1&{% endif %}{% if selected_name_type %}name_type={{ selected_name_type }}&{% endif %}{% if selected_writing_type %}writing_type={{ selected_writing_type }}&{% endif %}{% if selected_completeness %}completeness={{ selected_completeness }}&{% endif %}{% if selected_milieu %}milieu={{ selected_milieu }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
-        <a href="?{% if query %}q={{ query }}&{% endif %}{% if use_regex %}regex=1&{% endif %}{% if selected_name_type %}name_type={{ selected_name_type }}&{% endif %}{% if selected_writing_type %}writing_type={{ selected_writing_type }}&{% endif %}{% if selected_completeness %}completeness={{ selected_completeness }}&{% endif %}{% if selected_milieu %}milieu={{ selected_milieu }}&{% endif %}page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
+        <a href="?{% if qp %}q={{ qp }}&{% endif %}{% if rg %}regex=1&{% endif %}{% if nt %}name_type={{ nt }}&{% endif %}{% if wt %}writing_type={{ wt }}&{% endif %}{% if cm %}completeness={{ cm }}&{% endif %}{% if ml %}milieu={{ ml }}&{% endif %}{% if fr %}fragmentary=1&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+        <a href="?{% if qp %}q={{ qp }}&{% endif %}{% if rg %}regex=1&{% endif %}{% if nt %}name_type={{ nt }}&{% endif %}{% if wt %}writing_type={{ wt }}&{% endif %}{% if cm %}completeness={{ cm }}&{% endif %}{% if ml %}milieu={{ ml }}&{% endif %}{% if fr %}fragmentary=1&{% endif %}page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
         {% endif %}
+        {% endwith %}
     </div>
     {% endif %}
 </div>
