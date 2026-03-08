@@ -276,7 +276,7 @@
                 <td class="display-cell">{{ instance.determinative.name|default:"—" }}</td>
                 <td class="display-cell">{{ instance.title_epithet|default:"—" }}</td>
                 <td class="display-cell">
-                    {% if instance.fragment %}
+                    {% if instance.fragment and instance.fragment.series.name != 'BoHa' and instance.fragment.series.name != 'BoBe' and instance.fragment.series.name != 'Bo' %}
                     <a href="https://www.hethport.uni-wuerzburg.de/TLHdig/tlh_xtx.php?d={{ instance.fragment.series.name|urlencode }}%20{{ instance.fragment.fragment_number|urlencode }}" target="_blank" rel="noopener" class="tlhdig-link" title="View in TLHdig">TLH<sup>dig</sup></a>
                     {% else %}
                     —
