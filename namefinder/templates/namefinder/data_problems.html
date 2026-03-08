@@ -66,7 +66,8 @@
                         {% endfor %}
                         {% if not item.matches %}—{% endif %}
                     </td>
-                    <td>
+                    <td class="dp-actions">
+                        <button class="dp-btn dp-btn-keep" data-id="{{ item.name.pk }}" title="Not fragmentary — remove from this list">Keep</button>
                         <button class="dp-btn dp-btn-unlink" data-id="{{ item.name.pk }}" data-name="{{ item.name.name }}" data-count="{{ item.instance_count }}">
                             Unlink &amp; Delete
                         </button>
@@ -85,7 +86,8 @@
                         {% endfor %}
                         {% if not item.matches %}—{% endif %}
                     </td>
-                    <td>
+                    <td class="dp-actions">
+                        <button class="dp-btn dp-btn-keep" data-id="{{ item.name.pk }}" title="Not fragmentary — remove from this list">Keep</button>
                         <button class="dp-btn dp-btn-delete" data-id="{{ item.name.pk }}" data-name="{{ item.name.name }}">
                             Delete
                         </button>
@@ -171,6 +173,33 @@ document.getElementById('dp-search').addEventListener('input', applyFilters);
 applyFilters();
 
 // === Actions ===
+// Keep button — unflag as fragmentary
+document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.dp-btn-keep');
+    if (!btn) return;
+    btn.disabled = true;
+    btn.textContent = '...';
+    try {
+        const response = await fetch(`/api/data-problems/keep-name/${btn.dataset.id}/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken }
+        });
+        const result = await response.json();
+        if (result.success) {
+            btn.closest('tr').remove();
+            applyFilters();
+        } else {
+            alert('Error: ' + result.error);
+            btn.disabled = false;
+            btn.textContent = 'Keep';
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = 'Keep';
+    }
+});
+
 document.addEventListener('click', (e) => {
     const btn = e.target.closest('.dp-btn-unlink, .dp-btn-delete');
     if (!btn) return;
@@ -382,6 +411,21 @@ document.querySelectorAll('.modal').forEach(modal => {
     color: #fff;
 }
 .dp-btn-delete:hover { background: #c0392b; }
+.dp-btn-keep {
+    background: var(--card-background);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+.dp-btn-keep:hover {
+    background: var(--accent-color);
+    color: #fff;
+    border-color: var(--accent-color);
+}
+.dp-actions {
+    white-space: nowrap;
+    display: flex;
+    gap: 0.4rem;
+}
 
 .btn-warning {
     background: #e67e22;

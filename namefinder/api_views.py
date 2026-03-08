@@ -589,6 +589,20 @@ def api_delete_problem_name(request, pk):
         return JsonResponse({'error': str(e)}, status=400)
 
 
+@login_required
+@require_http_methods(["POST"])
+@csrf_protect
+def api_keep_name(request, pk):
+    """Mark a name as not fragmentary, removing it from the data problems list."""
+    try:
+        name = Name.objects.get(pk=pk)
+        name.is_fragmentary = False
+        name.save()
+        return JsonResponse({'success': True, 'name': name.name})
+    except Name.DoesNotExist:
+        return JsonResponse({'error': 'Name not found'}, status=404)
+
+
 # =============================================================================
 # Network API
 # =============================================================================
