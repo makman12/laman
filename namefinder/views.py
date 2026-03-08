@@ -851,6 +851,39 @@ def instance_delete(request, pk):
 
 
 # =============================================================================
+# Data Problems (Admin Only)
+# =============================================================================
+
+@login_required
+def data_problems(request):
+    """Admin page listing data quality issues that need manual review"""
+    active_tab = request.GET.get('tab', 'fragmentary')
+
+    context = {
+        'active_tab': active_tab,
+    }
+
+    if active_tab == 'fragmentary':
+        fragmentary_names = Name.objects.filter(is_fragmentary=True).select_related(
+            'name_type'
+        ).annotate(
+            instance_count=Count('instances')
+        ).order_by('name')
+
+        frag_with = [n for n in fragmentary_names if n.instance_count > 0]
+        frag_without = [n for n in fragmentary_names if n.instance_count == 0]
+
+        # For the "with attestations" group, we need both name and count
+        frag_with_data = [{'name': n, 'instance_count': n.instance_count} for n in frag_with]
+
+        context['fragmentary_count'] = fragmentary_names.count()
+        context['frag_with_attestations'] = frag_with_data
+        context['frag_without_attestations'] = frag_without
+
+    return render(request, 'namefinder/data_problems.html', context)
+
+
+# =============================================================================
 # Attestation Search
 # =============================================================================
 

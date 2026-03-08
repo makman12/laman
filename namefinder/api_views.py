@@ -554,6 +554,42 @@ def api_revert_change(request, pk):
 
 
 # =============================================================================
+# Data Problems API
+# =============================================================================
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_protect
+def api_delete_problem_name(request, pk):
+    """Delete a name from data problems, optionally unlinking its attestations first."""
+    try:
+        data = json.loads(request.body) if request.body else {}
+        unlink = data.get('unlink', False)
+
+        name = Name.objects.get(pk=pk)
+
+        if unlink:
+            # Set name=None on all instances (unlink, don't delete)
+            unlinked = Instance.objects.filter(name=name).update(name=None)
+        else:
+            unlinked = 0
+
+        name_str = name.name
+        name.delete()
+
+        return JsonResponse({
+            'success': True,
+            'name': name_str,
+            'unlinked': unlinked,
+        })
+
+    except Name.DoesNotExist:
+        return JsonResponse({'error': 'Name not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+# =============================================================================
 # Network API
 # =============================================================================
 

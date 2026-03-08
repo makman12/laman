@@ -46,6 +46,7 @@
             <li><a href="{% url 'namefinder:guide' %}" class="{% if request.resolver_match.url_name == 'guide' %}active{% endif %}">Guide</a></li>
             {% if user.is_authenticated %}
             <li><a href="{% url 'namefinder:changes' %}" class="{% if request.resolver_match.url_name == 'changes' %}active{% endif %}">Changes</a></li>
+            <li><a href="{% url 'namefinder:data_problems' %}" class="{% if request.resolver_match.url_name == 'data_problems' %}active{% endif %}">Data Problems</a></li>
             {% endif %}
         </ul>
         <ul class="nav-auth">

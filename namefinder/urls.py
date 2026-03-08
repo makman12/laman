@@ -62,4 +62,8 @@ urlpatterns = [
     
     # Changes log (admin only)
     path('changes/', views.changes, name='changes'),
+    path('data-problems/', views.data_problems, name='data_problems'),
+
+    # Data problems API
+    path('api/data-problems/delete-name/<int:pk>/', api_views.api_delete_problem_name, name='api_delete_problem_name'),
 ]
