@@ -104,9 +104,12 @@
     
     <div class="results-grid">
         {% for name in names %}
-        <a href="{% url 'namefinder:name_detail' name.id %}" class="name-card {% if name.name_type %}{{ name.name_type.name }}{% endif %}">
+        <a href="{% url 'namefinder:name_detail' name.id %}" class="name-card {% if name.name_type %}{{ name.name_type.name }}{% endif %}{% if name.is_fragmentary %} fragmentary{% endif %}">
             <div class="name-card-title">{{ name.name|safe }}</div>
             <div class="name-card-meta">
+                {% if name.is_fragmentary %}
+                <span class="name-type-badge fragmentary">Fragmentary</span>
+                {% endif %}
                 {% if name.name_type %}
                 <span class="name-type-badge {{ name.name_type.name }}">{{ name.name_type.name }}</span>
                 {% endif %}

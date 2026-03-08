@@ -4,11 +4,13 @@ from django.db import migrations
 
 
 def flag_fragmentary_names(apps, schema_editor):
-    """Flag names containing [ or … as fragmentary."""
+    """Flag names containing [, ], ?, … or ending with - as fragmentary."""
     Name = apps.get_model('namefinder', 'Name')
     from django.db.models import Q
     updated = Name.objects.filter(
-        Q(name__contains='[') | Q(name__contains='…')
+        Q(name__contains='[') | Q(name__contains=']') |
+        Q(name__contains='…') | Q(name__contains='?') |
+        Q(name__endswith='-') | Q(name__endswith='–')
     ).update(is_fragmentary=True)
     print(f"\n  Flagged {updated} names as fragmentary")
 
