@@ -10,7 +10,8 @@ def flag_fragmentary_names(apps, schema_editor):
     updated = Name.objects.filter(
         Q(name__contains='[') | Q(name__contains=']') |
         Q(name__contains='…') | Q(name__contains='?') |
-        Q(name__endswith='-') | Q(name__endswith='–')
+        Q(name__endswith='-') | Q(name__endswith='–') |
+        Q(name__contains='x')
     ).update(is_fragmentary=True)
     print(f"\n  Flagged {updated} names as fragmentary")
 
