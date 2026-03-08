@@ -122,15 +122,10 @@ def name_detail(request, pk):
         pk=pk
     )
     
-    # TEMPORARY: Hide attestations for toponyms (place names)
-    # To revert: remove the if/else and always use the full query
-    if name.name_type and name.name_type.name == 'place':
-        instances = Instance.objects.none()  # Empty queryset for toponyms
-    else:
-        instances = Instance.objects.filter(name=name).select_related(
-            'fragment', 'fragment__series', 'instance_type', 
-            'writing_type', 'determinative', 'completeness'
-        ).order_by('fragment__series__name', 'fragment__fragment_number', 'line')
+    instances = Instance.objects.filter(name=name).select_related(
+        'fragment', 'fragment__series', 'instance_type',
+        'writing_type', 'determinative', 'completeness'
+    ).order_by('fragment__series__name', 'fragment__fragment_number', 'line')
     
     determinatives = name.determinatives.all()
     
@@ -553,15 +548,10 @@ def export_name_csv(request, pk):
     """Export attestations for a name as CSV"""
     name = get_object_or_404(Name, pk=pk)
     
-    # TEMPORARY: Hide attestations for toponyms (place names)
-    # To revert: remove the if/else and always use the full query
-    if name.name_type and name.name_type.name == 'place':
-        instances = Instance.objects.none()
-    else:
-        instances = Instance.objects.filter(name=name).select_related(
-            'fragment', 'fragment__series', 'instance_type', 
-            'writing_type', 'determinative', 'completeness'
-        ).order_by('fragment__series__name', 'fragment__fragment_number', 'line')
+    instances = Instance.objects.filter(name=name).select_related(
+        'fragment', 'fragment__series', 'instance_type',
+        'writing_type', 'determinative', 'completeness'
+    ).order_by('fragment__series__name', 'fragment__fragment_number', 'line')
     
     # Create CSV response
     response = HttpResponse(content_type='text/csv')
