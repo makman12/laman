@@ -4,6 +4,11 @@
 {% block title %}{{ title }} - LAMAN{% endblock %}
 
 {% block content %}
+{% if modal_mode and saved %}
+<script>
+window.parent.postMessage({ type: 'instance-edit-saved' }, window.location.origin);
+</script>
+{% endif %}
 <div class="breadcrumb">
     <a href="{% url 'namefinder:index' %}">Search</a>
     <span>›</span>
@@ -27,6 +32,9 @@
     
     <form method="post" class="detail-form">
         {% csrf_token %}
+        {% if modal_mode %}
+        <input type="hidden" name="next" value="{{ next_url }}">
+        {% endif %}
         
         <div class="form-section">
             <h2>Attestation Details</h2>
@@ -86,6 +94,16 @@
                     {% if form.determinative.errors %}
                     <div class="form-error">{{ form.determinative.errors.0 }}</div>
                     {% endif %}
+                    <div class="form-help"><a href="{% url 'namefinder:determinative_manager' %}">Manage determinatives</a></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="id_determinative_variant_value">Attested Form</label>
+                    {{ form.determinative_variant_value }}
+                    {% if form.determinative_variant_value.errors %}
+                    <div class="form-error">{{ form.determinative_variant_value.errors.0 }}</div>
+                    {% endif %}
+                    <div class="form-help">Use this when the attested form differs from the determinative label.</div>
                 </div>
                 
                 <div class="form-group">
@@ -108,7 +126,11 @@
         
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">{{ action }} Attestation</button>
+            {% if modal_mode %}
+            <button type="button" class="btn btn-secondary" onclick="window.parent.postMessage({ type: 'instance-edit-cancel' }, window.location.origin)">Cancel</button>
+            {% else %}
             <a href="javascript:history.back()" class="btn btn-secondary">Cancel</a>
+            {% endif %}
         </div>
     </form>
 </div>

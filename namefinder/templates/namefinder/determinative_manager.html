@@ -1,0 +1,135 @@
+{% extends 'namefinder/base.html' %}
+
+{% block title %}Determinatives - LAMAN{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="{% url 'namefinder:index' %}">Search</a>
+    <span>›</span>
+    Determinatives
+</div>
+
+<div class="form-container">
+    <h1 class="page-title">Determinatives</h1>
+
+    <div class="form-section">
+        <h2>Create Determinative</h2>
+        <form method="post" class="detail-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="{{ create_form.name.id_for_label }}">Name</label>
+                    {{ create_form.name }}
+                    {% if create_form.name.errors %}<div class="form-error">{{ create_form.name.errors.0 }}</div>{% endif %}
+                </div>
+                <div class="form-group form-checkbox-wrapper">
+                    <label class="checkbox-label">
+                        {{ create_form.is_active }}
+                        <span>Active</span>
+                    </label>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Create</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="form-section">
+        <h2>Merge Determinatives</h2>
+        <form method="post" class="detail-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="merge">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="{{ merge_form.source.id_for_label }}">Merge from</label>
+                    {{ merge_form.source }}
+                </div>
+                <div class="form-group">
+                    <label for="{{ merge_form.target.id_for_label }}">Merge into</label>
+                    {{ merge_form.target }}
+                </div>
+            </div>
+            {% if merge_form.non_field_errors %}<div class="form-error">{{ merge_form.non_field_errors.0 }}</div>{% endif %}
+            <div class="form-actions">
+                <button type="submit" class="btn btn-secondary">Merge</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="form-section">
+        <h2>Determinative List</h2>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Active</th>
+                    <th>Names</th>
+                    <th>Attestations</th>
+                    <th>Variants</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for det in determinatives %}
+                <tr>
+                    <td><a href="{% url 'namefinder:determinative_detail' det.id %}">{{ det.name }}</a></td>
+                    <td>{{ det.is_active|yesno:"Yes,No" }}</td>
+                    <td>{{ det.name_count }}</td>
+                    <td>{{ det.instance_count }}</td>
+                    <td>{{ det.variant_count }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5">No determinatives found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="form-section">
+        <h2>Unmapped Variants</h2>
+        <div class="form-help" style="margin-bottom: 0.75rem;">
+            {% if show_zero %}
+            <a href="{% url 'namefinder:determinative_manager' %}">Hide 0-attestation rows</a>
+            {% else %}
+            <a href="{% url 'namefinder:determinative_manager' %}?show_zero=1">Show 0-attestation rows</a>
+            {% endif %}
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Variant</th>
+                    <th>Kind</th>
+                    <th>Attestations</th>
+                    <th>Map To</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for variant in orphan_variants %}
+                <tr>
+                    <td>{{ variant.value }}</td>
+                    <td>{{ variant.get_variant_kind_display }}</td>
+                    <td>{{ variant.instance_count }}</td>
+                    <td>
+                        <form method="post" style="display:flex; gap:0.5rem; align-items:center;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="map_orphan">
+                            <input type="hidden" name="variant_id" value="{{ variant.id }}">
+                            <select name="target_determinative" class="form-select">
+                                <option value="">Select...</option>
+                                {% for det in determinatives %}
+                                <option value="{{ det.id }}">{{ det.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn btn-outline">Map</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4">No unmapped variants.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

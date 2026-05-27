@@ -219,6 +219,10 @@
                 </select>
             </div>
             <div class="form-group">
+                <label>Attested Form</label>
+                <input type="text" id="new-determinative-variant-value" placeholder="Only if the attested form differs">
+            </div>
+            <div class="form-group">
                 <label>Title/Epithet</label>
                 <input type="text" id="new-title-epithet" placeholder="Title or epithet">
             </div>
@@ -248,7 +252,17 @@
         </thead>
         <tbody>
             {% for instance in instances %}
-            <tr id="row-{{ instance.id }}" data-id="{{ instance.id }}">
+            <tr id="row-{{ instance.id }}" data-id="{{ instance.id }}"
+                data-fragment-id="{{ instance.fragment_id|default:'' }}"
+                data-fragment-text="{% if instance.fragment %}{{ instance.fragment.series.name|escapejs }} {{ instance.fragment.fragment_number|escapejs }}{% endif %}"
+                data-line="{{ instance.line|default:''|escapejs }}"
+                data-spelling="{{ instance.spelling|default:''|escapejs }}"
+                data-instance-type-id="{{ instance.instance_type_id|default:'' }}"
+                data-writing-type-id="{{ instance.writing_type_id|default:'' }}"
+                data-determinative-id="{% if instance.determinative %}{{ instance.determinative.id }}{% endif %}"
+                data-determinative-variant-value="{{ instance.display_determinative|default:''|escapejs }}"
+                data-completeness-id="{{ instance.completeness_id|default:'' }}"
+                data-title-epithet="{{ instance.title_epithet|default:''|escapejs }}">
                 <!-- Display Mode -->
                 <td class="display-cell">
                     {% if instance.fragment %}
@@ -274,7 +288,7 @@
                 <td class="display-cell">{{ instance.line|default:"—" }}</td>
                 <td class="display-cell">{{ instance.spelling|default:"—"|safe }}</td>
                 <td class="display-cell">{{ instance.writing_type.name|default:"—" }}</td>
-                <td class="display-cell">{{ instance.determinative.name|default:"—" }}</td>
+                <td class="display-cell">{{ instance.display_determinative|default:"—" }}</td>
                 <td class="display-cell">{{ instance.title_epithet|default:"—" }}</td>
                 <td class="display-cell">
                     {% if instance.fragment and instance.fragment.series.name != 'BoHa' and instance.fragment.series.name != 'BoBe' and instance.fragment.series.name != 'Bo' %}
@@ -284,50 +298,8 @@
                     {% endif %}
                 </td>
                 {% if user.is_authenticated %}
-                <!-- Edit Mode (hidden) -->
-                <td class="edit-cell fragment-cell" style="display: none;">
-                    <div class="fragment-autocomplete-inline">
-                        <input type="text" class="edit-fragment-text inline-input-sm fragment-autocomplete" 
-                               value="{% if instance.fragment %}{{ instance.fragment.series.name }} {{ instance.fragment.fragment_number }}{% endif %}" 
-                               autocomplete="off">
-                        <input type="hidden" class="edit-fragment-id" value="{{ instance.fragment_id|default:'' }}">
-                        <div class="autocomplete-dropdown"></div>
-                    </div>
-                </td>
-                <td class="edit-cell" style="display: none;">—</td><!-- CTH (read-only from fragment) -->
-                <td class="edit-cell" style="display: none;">—</td><!-- Date (read-only from fragment) -->
-                <td class="edit-cell" style="display: none;">
-                    <input type="text" class="edit-line inline-input-sm" value="{{ instance.line|default:'' }}">
-                </td>
-                <td class="edit-cell" style="display: none;">
-                    <input type="text" class="edit-spelling inline-input-sm" value="{{ instance.spelling|default:'' }}">
-                </td>
-                <td class="edit-cell" style="display: none;">
-                    <select class="edit-writing-type inline-select-sm">
-                        <option value="">—</option>
-                        {% for wt in writing_types %}
-                        <option value="{{ wt.id }}" {% if instance.writing_type_id == wt.id %}selected{% endif %}>{{ wt.name|title }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td class="edit-cell" style="display: none;">
-                    <select class="edit-determinative inline-select-sm">
-                        <option value="">—</option>
-                        {% for d in all_determinatives %}
-                        <option value="{{ d.id }}" {% if instance.determinative_id == d.id %}selected{% endif %}>{{ d.name }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td class="edit-cell" style="display: none;">
-                    <input type="text" class="edit-title-epithet inline-input-sm" value="{{ instance.title_epithet|default:'' }}">
-                </td>
-                <td class="edit-cell" style="display: none;">—</td>
-                
-                <!-- Actions Column -->
                 <td class="actions-cell">
-                    <button class="btn-icon edit-btn" onclick="toggleInstanceEdit({{ instance.id }})" title="Edit">✎</button>
-                    <button class="btn-icon save-btn" onclick="saveInstance({{ instance.id }})" title="Save" style="display: none;">✓</button>
-                    <button class="btn-icon cancel-btn" onclick="cancelInstanceEdit({{ instance.id }})" title="Cancel" style="display: none;">✕</button>
+                    <button class="btn-icon edit-btn" onclick="openInstanceEditModal({{ instance.id }})" title="Edit">✎</button>
                     <button class="btn-icon delete-btn" onclick="confirmDelete('instance', {{ instance.id }}, 'this attestation')" title="Delete">🗑</button>
                 </td>
                 {% endif %}
@@ -377,6 +349,80 @@
 </div>
 {% endif %}
 
+<div id="instance-edit-modal" class="modal" style="display: none;">
+    <div class="modal-content" style="width: min(960px, 92vw); max-height: min(90vh, 860px); overflow-y: auto;">
+        <h3>Edit Attestation</h3>
+        <div class="detail-form">
+            <div class="form-section">
+                <div class="form-grid">
+                    <div class="form-group fragment-autocomplete-group">
+                        <label>Fragment</label>
+                        <input type="text" id="edit-fragment-text" class="fragment-autocomplete form-input" autocomplete="off">
+                        <input type="hidden" id="edit-fragment-id">
+                        <div id="edit-fragment-dropdown" class="autocomplete-dropdown"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Line</label>
+                        <input type="text" id="edit-line" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Spelling</label>
+                        <input type="text" id="edit-spelling" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Instance Type</label>
+                        <select id="edit-instance-type" class="form-select">
+                            <option value="">—</option>
+                            {% for t in instance_types %}
+                            <option value="{{ t.id }}">{{ t.name|title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Writing Type</label>
+                        <select id="edit-writing-type" class="form-select">
+                            <option value="">—</option>
+                            {% for wt in writing_types %}
+                            <option value="{{ wt.id }}">{{ wt.name|title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Determinative</label>
+                        <select id="edit-determinative" class="form-select">
+                            <option value="">—</option>
+                            {% for d in all_determinatives %}
+                            <option value="{{ d.id }}">{{ d.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Attested Form</label>
+                        <input type="text" id="edit-determinative-variant-value" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Completeness</label>
+                        <select id="edit-completeness" class="form-select">
+                            <option value="">—</option>
+                            {% for ct in completeness_types %}
+                            <option value="{{ ct.id }}">{{ ct.name|title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Title/Epithet</label>
+                        <input type="text" id="edit-title-epithet" class="form-input">
+                    </div>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-primary" onclick="saveInstanceModal()">Save</button>
+                <button class="btn btn-secondary" onclick="closeInstanceEditModal()" type="button">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Delete Confirmation Modal -->
 <div id="delete-modal" class="modal" style="display: none;">
     <div class="modal-content">
@@ -414,6 +460,7 @@ const nameId = {{ name.id }};
 let searchTimeout = null;
 let activeDropdown = null;
 let pendingFragmentData = null;
+let editingInstanceId = null;
 
 // Initialize all autocomplete fields
 document.addEventListener('DOMContentLoaded', function() {
@@ -421,6 +468,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const newFragmentInput = document.getElementById('new-fragment-text');
     if (newFragmentInput) {
         setupFragmentAutocomplete(newFragmentInput, 'new-fragment-id', 'new-fragment-dropdown');
+    }
+    const editFragmentInput = document.getElementById('edit-fragment-text');
+    if (editFragmentInput) {
+        setupFragmentAutocomplete(editFragmentInput, 'edit-fragment-id', 'edit-fragment-dropdown');
     }
     
     // Setup autocomplete for inline edit fields (delegated)
@@ -667,44 +718,57 @@ async function saveName() {
     }
 }
 
-// Instance editing
-function toggleInstanceEdit(id) {
+function openInstanceEditModal(id) {
+    editingInstanceId = id;
     const row = document.getElementById(`row-${id}`);
-    row.querySelectorAll('.display-cell').forEach(c => c.style.display = 'none');
-    row.querySelectorAll('.edit-cell').forEach(c => c.style.display = 'table-cell');
-    row.querySelector('.edit-btn').style.display = 'none';
-    row.querySelector('.delete-btn').style.display = 'none';
-    row.querySelector('.save-btn').style.display = 'inline-block';
-    row.querySelector('.cancel-btn').style.display = 'inline-block';
+    document.getElementById('edit-fragment-id').value = row.dataset.fragmentId || '';
+    document.getElementById('edit-fragment-text').value = row.dataset.fragmentText || '';
+    document.getElementById('edit-line').value = row.dataset.line || '';
+    document.getElementById('edit-spelling').value = row.dataset.spelling || '';
+    document.getElementById('edit-instance-type').value = row.dataset.instanceTypeId || '';
+    document.getElementById('edit-writing-type').value = row.dataset.writingTypeId || '';
+    document.getElementById('edit-determinative').value = row.dataset.determinativeId || '';
+    document.getElementById('edit-determinative-variant-value').value = row.dataset.determinativeVariantValue || '';
+    document.getElementById('edit-completeness').value = row.dataset.completenessId || '';
+    document.getElementById('edit-title-epithet').value = row.dataset.titleEpithet || '';
+    document.getElementById('instance-edit-modal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
 }
 
-function cancelInstanceEdit(id) {
-    location.reload();
+function closeInstanceEditModal(refresh = false) {
+    const modal = document.getElementById('instance-edit-modal');
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+    editingInstanceId = null;
+    if (refresh) {
+        location.reload();
+    }
 }
 
-async function saveInstance(id) {
-    const row = document.getElementById(`row-${id}`);
-    const fragmentId = row.querySelector('.edit-fragment-id').value;
-    const fragmentText = row.querySelector('.edit-fragment-text').value.trim();
-    
-    // If there's text but no ID, try to create/find the fragment first
+async function saveInstanceModal() {
+    if (!editingInstanceId) {
+        return;
+    }
+    const fragmentId = document.getElementById('edit-fragment-id').value;
+    const fragmentText = document.getElementById('edit-fragment-text').value.trim();
     let finalFragmentId = fragmentId;
     if (fragmentText && !fragmentId) {
         finalFragmentId = await resolveFragment(fragmentText);
-        if (!finalFragmentId) return; // User cancelled or error
+        if (!finalFragmentId) return;
     }
-    
     const data = {
         fragment: finalFragmentId || null,
-        line: row.querySelector('.edit-line').value,
-        spelling: row.querySelector('.edit-spelling').value,
-        writing_type: row.querySelector('.edit-writing-type').value || null,
-        determinative: row.querySelector('.edit-determinative').value || null,
-        title_epithet: row.querySelector('.edit-title-epithet').value
+        line: document.getElementById('edit-line').value,
+        spelling: document.getElementById('edit-spelling').value,
+        instance_type: document.getElementById('edit-instance-type').value || null,
+        writing_type: document.getElementById('edit-writing-type').value || null,
+        determinative_variant_value: document.getElementById('edit-determinative-variant-value').value,
+        determinative: document.getElementById('edit-determinative').value || null,
+        completeness: document.getElementById('edit-completeness').value || null,
+        title_epithet: document.getElementById('edit-title-epithet').value
     };
-    
     try {
-        const response = await fetch(`/api/instance/${id}/`, {
+        const response = await fetch(`/api/instance/${editingInstanceId}/`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -712,10 +776,9 @@ async function saveInstance(id) {
             },
             body: JSON.stringify(data)
         });
-        
         const result = await response.json();
         if (result.success) {
-            location.reload();
+            closeInstanceEditModal(true);
         } else {
             alert('Error saving: ' + result.error);
         }
@@ -812,6 +875,7 @@ async function saveNewAttestation() {
         line: document.getElementById('new-line').value,
         spelling: document.getElementById('new-spelling').value,
         writing_type: document.getElementById('new-writing-type').value || null,
+        determinative_variant_value: document.getElementById('new-determinative-variant-value').value,
         determinative: document.getElementById('new-determinative').value || null,
         title_epithet: document.getElementById('new-title-epithet').value
     };
@@ -884,6 +948,12 @@ document.getElementById('confirm-delete-btn').addEventListener('click', async ()
 document.getElementById('delete-modal').addEventListener('click', (e) => {
     if (e.target.id === 'delete-modal') {
         hideDeleteModal();
+    }
+});
+
+document.getElementById('instance-edit-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'instance-edit-modal') {
+        closeInstanceEditModal(false);
     }
 });
 </script>

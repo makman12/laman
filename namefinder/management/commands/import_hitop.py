@@ -7,7 +7,7 @@ import re
 import pandas as pd
 from django.core.management.base import BaseCommand
 from namefinder.models import (
-    Name, Instance, Fragment, NameType, Determinative
+    Name, Instance, Fragment, NameType, Determinative, DeterminativeVariant
 )
 
 
@@ -173,13 +173,21 @@ class Command(BaseCommand):
 
             # Determinative
             det_obj = None
+            det_variant = None
             if geo_ident and geo_ident != 'nan':
-                if geo_ident not in det_cache:
+                canonical_geo_ident = Determinative.normalize_name(geo_ident)
+                if canonical_geo_ident and canonical_geo_ident not in det_cache:
                     if not dry_run:
-                        det_obj = Determinative.objects.create(name=geo_ident)
-                        det_cache[geo_ident] = det_obj
+                        det_obj = Determinative.objects.create(name=canonical_geo_ident)
+                        det_cache[canonical_geo_ident] = det_obj
                 else:
-                    det_obj = det_cache[geo_ident]
+                    det_obj = det_cache.get(canonical_geo_ident)
+                cleaned_geo_ident = Determinative.clean_variant_value(geo_ident)
+                if cleaned_geo_ident and not dry_run:
+                    det_variant = DeterminativeVariant.get_or_create_for_value(
+                        cleaned_geo_ident,
+                        determinative=det_obj,
+                    )
 
             # Notes: combine anmerk + gramm
             notes_parts = []
@@ -195,7 +203,7 @@ class Command(BaseCommand):
                 line=line or None,
                 spelling=translit if translit and translit != 'nan' else None,
                 instance_type=place_type,
-                determinative=det_obj,
+                determinative_variant=det_variant,
                 notes=notes,
             ))
 

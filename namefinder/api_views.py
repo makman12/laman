@@ -7,7 +7,7 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect
 from django.db.models import Q
-from .models import Name, Instance, Fragment, Series, NameType, WritingType, CompletenessType, Milieu, Determinative, ChangeLog, DataReport
+from .models import Name, Instance, Fragment, Series, NameType, WritingType, CompletenessType, Milieu, Determinative, DeterminativeVariant, ChangeLog, DataReport
 
 
 def get_name_data(name):
@@ -34,8 +34,32 @@ def get_instance_data(instance):
         'spelling': instance.spelling,
         'writing_type': instance.writing_type.name if instance.writing_type else None,
         'determinative': instance.determinative.name if instance.determinative else None,
+        'determinative_variant_value': instance.display_determinative,
         'title_epithet': instance.title_epithet,
     }
+
+
+def resolve_instance_variant(data):
+    determinative_id = data.get('determinative')
+    variant_value = Determinative.clean_variant_value(data.get('determinative_variant_value', ''))
+
+    if variant_value and not determinative_id:
+        raise ValueError('Select a determinative when entering an attested form.')
+
+    if not determinative_id:
+        return None
+
+    determinative = Determinative.objects.get(pk=determinative_id)
+    if variant_value:
+        return DeterminativeVariant.get_or_create_for_value(
+            variant_value,
+            determinative=determinative,
+        )
+    return determinative.preferred_variant or DeterminativeVariant.get_or_create_for_value(
+        determinative.name,
+        determinative=determinative,
+        is_preferred=True,
+    )
 
 
 def get_fragment_data(fragment):
@@ -139,10 +163,16 @@ def api_instance_create(request):
         writing_type_id = data.get('writing_type')
         if writing_type_id:
             instance.writing_type_id = writing_type_id
-            
-        determinative_id = data.get('determinative')
-        if determinative_id:
-            instance.determinative_id = determinative_id
+
+        instance_type_id = data.get('instance_type')
+        if instance_type_id:
+            instance.instance_type_id = instance_type_id
+
+        completeness_id = data.get('completeness')
+        if completeness_id:
+            instance.completeness_id = completeness_id
+
+        instance.determinative_variant = resolve_instance_variant(data)
             
         instance_type_id = data.get('instance_type')
         if instance_type_id:
@@ -174,8 +204,7 @@ def api_instance_update(request, pk):
         data = json.loads(request.body)
         
         fragment_id = data.get('fragment')
-        if fragment_id:
-            instance.fragment_id = fragment_id
+        instance.fragment_id = fragment_id if fragment_id else None
             
         instance.line = data.get('line', '')
         instance.spelling = data.get('spelling', '')
@@ -183,9 +212,14 @@ def api_instance_update(request, pk):
         
         writing_type_id = data.get('writing_type')
         instance.writing_type_id = writing_type_id if writing_type_id else None
-        
-        determinative_id = data.get('determinative')
-        instance.determinative_id = determinative_id if determinative_id else None
+
+        instance_type_id = data.get('instance_type')
+        instance.instance_type_id = instance_type_id if instance_type_id else None
+
+        completeness_id = data.get('completeness')
+        instance.completeness_id = completeness_id if completeness_id else None
+
+        instance.determinative_variant = resolve_instance_variant(data)
         
         instance.save()
         
@@ -495,7 +529,11 @@ def api_revert_change(request, pk):
                         if wt: recreate_data['writing_type'] = wt
                     if old_data.get('determinative'):
                         det = Determinative.objects.filter(name=old_data['determinative']).first()
-                        if det: recreate_data['determinative'] = det
+                        if det:
+                            recreate_data['determinative_variant'] = DeterminativeVariant.get_or_create_for_value(
+                                old_data.get('determinative_variant_value') or det.name,
+                                determinative=det,
+                            )
                     model_class.objects.create(**recreate_data)
                     
         elif change.action == 'update':
@@ -533,7 +571,10 @@ def api_revert_change(request, pk):
                             obj.writing_type = wt
                         if 'determinative' in old_data:
                             det = Determinative.objects.filter(name=old_data['determinative']).first() if old_data['determinative'] else None
-                            obj.determinative = det
+                            obj.determinative_variant = DeterminativeVariant.get_or_create_for_value(
+                                old_data.get('determinative_variant_value') or (det.name if det else ''),
+                                determinative=det,
+                            ) if det else None
                             
                     obj.save()
                 except model_class.DoesNotExist:

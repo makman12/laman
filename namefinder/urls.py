@@ -30,6 +30,8 @@ urlpatterns = [
     path('name/create/', views.name_create, name='name_create'),
     path('name/<int:pk>/edit/', views.name_edit, name='name_edit'),
     path('name/<int:pk>/delete/', views.name_delete, name='name_delete'),
+    path('determinatives/', views.determinative_manager, name='determinative_manager'),
+    path('determinatives/<int:pk>/', views.determinative_detail, name='determinative_detail'),
     
     # Fragment CRUD (form-based)
     path('fragment/create/', views.fragment_create, name='fragment_create'),

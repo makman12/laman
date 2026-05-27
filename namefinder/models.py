@@ -90,6 +90,10 @@ class Series(models.Model):
 class Determinative(models.Model):
     """Lookup table for determinatives (classifier symbols)"""
     name = models.CharField(max_length=100, unique=True)
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether this determinative should appear in normal user pickers"
+    )
     
     class Meta:
         verbose_name = "Determinative"
@@ -98,6 +102,183 @@ class Determinative(models.Model):
     
     def __str__(self):
         return self.name
+
+    @staticmethod
+    def clean_variant_value(text):
+        if text is None:
+            return ""
+        cleaned = str(text).replace('°', '').strip()
+        return re.sub(r'\s+', ' ', cleaned)
+
+    @staticmethod
+    def normalize_name(text):
+        """Normalize a determinative label to its grouped determinative form."""
+        normalized = Determinative.clean_variant_value(text)
+        if not normalized:
+            return ""
+
+        for ch in ['[', ']', '⸢', '⸣', '〈', '〉', '?', '!', '(', ')']:
+            normalized = normalized.replace(ch, '')
+
+        normalized = re.sub(r'\s+', ' ', normalized).strip()
+        normalized = normalized.strip('- ').strip()
+        if normalized in {'', '—', '---'}:
+            return ""
+        return normalized
+
+    @staticmethod
+    def _letter_runs(text):
+        return re.findall(r"[^\W\d_]+", text, flags=re.UNICODE)
+
+    @classmethod
+    def is_valid_parent_name(cls, text):
+        normalized = cls.normalize_name(text)
+        if not normalized:
+            return False
+        if normalized.startswith('_'):
+            return False
+        if not any(ch.isalpha() for ch in normalized):
+            return False
+        return True
+
+    @classmethod
+    def get_or_create_normalized(cls, text, is_active=True):
+        normalized = cls.normalize_name(text)
+        if not cls.is_valid_parent_name(normalized):
+            return None
+        determinative, created = cls.objects.get_or_create(
+            name=normalized,
+            defaults={'is_active': is_active},
+        )
+        if determinative.is_active != is_active and is_active:
+            determinative.is_active = True
+            determinative.save(update_fields=['is_active'])
+        return determinative
+
+    @property
+    def preferred_variant(self):
+        preferred = self.variants.filter(is_preferred=True).order_by('id').first()
+        if preferred:
+            return preferred
+        return self.variants.order_by('id').first()
+
+    @property
+    def display_label(self):
+        preferred = self.preferred_variant
+        return preferred.value if preferred else self.name
+
+    def ensure_preferred_variant(self):
+        preferred = self.preferred_variant
+        if preferred:
+            return preferred
+        return DeterminativeVariant.get_or_create_for_value(
+            self.name,
+            determinative=self,
+            is_preferred=True,
+        )
+
+
+class DeterminativeVariant(models.Model):
+    """Exact attested determinative forms mapped onto a determinative when possible."""
+
+    KIND_STANDARD = 'standard'
+    KIND_RESTORED = 'restored'
+    KIND_EDITORIAL = 'editorial'
+    KIND_PLACEHOLDER = 'placeholder'
+    KIND_CHOICES = [
+        (KIND_STANDARD, 'Standard'),
+        (KIND_RESTORED, 'Restored/Damaged'),
+        (KIND_EDITORIAL, 'Editorial/Unmapped'),
+        (KIND_PLACEHOLDER, 'Placeholder'),
+    ]
+
+    determinative = models.ForeignKey(
+        Determinative,
+        on_delete=models.CASCADE,
+        related_name='variants',
+        null=True,
+        blank=True,
+        help_text="Normalized determinative; blank for unmapped/noisy values"
+    )
+    value = models.CharField(max_length=100)
+    variant_kind = models.CharField(
+        max_length=20,
+        choices=KIND_CHOICES,
+        default=KIND_STANDARD,
+    )
+    is_preferred = models.BooleanField(
+        default=False,
+        help_text="Preferred display variant for the determinative"
+    )
+
+    class Meta:
+        verbose_name = "Determinative Variant"
+        verbose_name_plural = "Determinative Variants"
+        ordering = ['determinative__name', 'value']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['determinative', 'value'],
+                name='unique_determinative_variant_value',
+            )
+        ]
+
+    def __str__(self):
+        if self.determinative:
+            return f"{self.value} [{self.determinative.name}]"
+        return self.value
+
+    @property
+    def is_selectable(self):
+        return self.determinative_id is not None and self.variant_kind != self.KIND_PLACEHOLDER
+
+    @classmethod
+    def classify_kind(cls, value, determinative=None):
+        cleaned = Determinative.clean_variant_value(value)
+        if cleaned in {'', '—', '---'} or cleaned.lower().startswith('br'):
+            return cls.KIND_PLACEHOLDER
+        if any(ch in cleaned for ch in ['[', ']', '⸢', '⸣', '〈', '〉', '?', '!']):
+            return cls.KIND_RESTORED
+        if determinative is None:
+            return cls.KIND_EDITORIAL
+        if cleaned == determinative.name:
+            return cls.KIND_STANDARD
+        return cls.KIND_EDITORIAL
+
+    @classmethod
+    def get_or_create_for_value(cls, value, determinative=None, is_preferred=False):
+        cleaned = Determinative.clean_variant_value(value)
+        if not cleaned:
+            return None
+
+        variant, created = cls.objects.get_or_create(
+            determinative=determinative,
+            value=cleaned,
+            defaults={
+                'variant_kind': cls.classify_kind(cleaned, determinative=determinative),
+                'is_preferred': is_preferred,
+            }
+        )
+
+        updates = []
+        desired_kind = cls.classify_kind(cleaned, determinative=determinative)
+        if variant.variant_kind != desired_kind:
+            variant.variant_kind = desired_kind
+            updates.append('variant_kind')
+        if is_preferred and not variant.is_preferred:
+            variant.is_preferred = True
+            updates.append('is_preferred')
+        if updates:
+            variant.save(update_fields=updates)
+        return variant
+
+    def save(self, *args, **kwargs):
+        self.value = Determinative.clean_variant_value(self.value)
+        if self.value in {'', None}:
+            raise ValueError('DeterminativeVariant.value cannot be empty')
+        self.variant_kind = self.classify_kind(self.value, determinative=self.determinative)
+        super().save(*args, **kwargs)
+        if self.is_preferred and self.determinative_id:
+            self.__class__.objects.filter(determinative=self.determinative).exclude(pk=self.pk).update(is_preferred=False)
 
 
 # =============================================================================
@@ -425,8 +606,8 @@ class Instance(models.Model):
         null=True,
         blank=True
     )
-    determinative = models.ForeignKey(
-        Determinative,
+    determinative_variant = models.ForeignKey(
+        DeterminativeVariant,
         on_delete=models.PROTECT,
         related_name='instances',
         null=True,
@@ -455,11 +636,58 @@ class Instance(models.Model):
         verbose_name = "Instance"
         verbose_name_plural = "Instances"
         ordering = ['name__name', 'fragment__series_fragment']
-    
+
+    @property
+    def display_determinative(self):
+        return self.determinative_variant.value if self.determinative_variant else ""
+
+    @property
+    def determinative(self):
+        if self.determinative_variant_id:
+            return self.determinative_variant.determinative
+        return None
+
     def __str__(self):
         name_str = self.name.name if self.name else "Unknown"
         fragment_str = self.fragment.series_fragment if self.fragment else "Unknown Fragment"
         return f"{name_str} in {fragment_str}"
+
+
+class InstanceTLHMatch(models.Model):
+    """Persisted TLH corpus matching result for an attestation."""
+
+    STATUS_CHOICES = [
+        ('matched', 'Matched'),
+        ('ambiguous_token', 'Ambiguous token'),
+        ('line_not_found', 'Line not found'),
+        ('no_name_token', 'No name token'),
+        ('no_doc', 'No doc'),
+        ('multiple_docs', 'Multiple docs'),
+        ('unparsed_line', 'Unparsed line'),
+    ]
+
+    instance = models.OneToOneField(
+        Instance,
+        on_delete=models.CASCADE,
+        related_name='tlh_match_record',
+    )
+    status = models.CharField(max_length=32, choices=STATUS_CHOICES, db_index=True)
+    doc_id = models.CharField(max_length=255, blank=True)
+    suggested_spelling = models.TextField(blank=True)
+    suggested_determinative = models.CharField(max_length=100, blank=True)
+    targets = models.JSONField(default=list, blank=True)
+    matched_lines = models.JSONField(default=list, blank=True)
+    candidates = models.JSONField(default=list, blank=True)
+    extra_data = models.JSONField(default=dict, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Instance TLH Match"
+        verbose_name_plural = "Instance TLH Matches"
+        ordering = ['instance_id']
+
+    def __str__(self):
+        return f"TLH match for instance {self.instance_id}: {self.status}"
 
 
 # =============================================================================

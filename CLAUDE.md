@@ -47,6 +47,7 @@ Three core models with several lookup/reference tables:
 - **Name** — Core entity. Has a `query` field that is auto-normalized on save (removes accents like ḫ→h/š→s, collapses repeated letters, normalizes similar sounds g=k/b=p/d=t) for fuzzy searching. Has `is_fragmentary` flag for incomplete readings (hidden from search by default). Related to lookup tables: `NameType` (person/place/deity), `WritingType`, `CompletenessType`, `Milieu`, `Determinative` (M2M).
 - **Fragment** — A cuneiform tablet/text reference. Organized by `Series` (KBo, KUB, etc.) and linked to CTH (Catalogue des Textes Hittites) numbers. Contains archaeological metadata (find spot, inventory number, dating).
 - **Instance** — An attestation linking a Name to a Fragment (with line reference, spelling, writing type). Name FK is nullable — unlinked attestations (name=NULL) are supported and browsable via `/attestations/`.
+- **DataReport** — User-submitted problem reports on names/fragments, with status tracking (open/resolved/dismissed). Listed in Data Problems page under Reports tab.
 - **ChangeLog** — Audit trail storing old/new data as JSON, supports reverting changes.
 
 ### Views
@@ -54,7 +55,7 @@ Three core models with several lookup/reference tables:
 Two view modules serve different purposes:
 
 - **views.py** — Server-rendered page views: search pages (names, fragments, CTH, attestations), detail pages, CRUD forms, CSV exports, network visualization, data problems (admin).
-- **api_views.py** — AJAX/JSON API endpoints for inline editing of names, instances, and fragments. Includes data problems API (delete/keep names). All mutating API endpoints require authentication and log changes to ChangeLog.
+- **api_views.py** — AJAX/JSON API endpoints for inline editing of names, instances, and fragments. Includes data problems API (delete/keep names) and report submission/resolution endpoints. All mutating API endpoints require authentication and log changes to ChangeLog.
 
 ### URL Structure
 
@@ -68,7 +69,7 @@ All routes are under the `namefinder` app namespace. Key patterns:
 - `/attestations/` — Attestation search with filters (independent of names, supports unlinked attestations)
 - `/api/` — JSON endpoints for inline CRUD operations
 - `/network/` — Co-occurrence network visualization (uses NetworkX + python-louvain)
-- `/data-problems/` — Admin-only page for reviewing data quality issues (fragmentary names, matching)
+- `/data-problems/` — Admin-only page for reviewing data quality issues (fragmentary names, user reports)
 
 ### Static Assets
 

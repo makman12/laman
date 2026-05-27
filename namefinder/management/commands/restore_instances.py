@@ -9,7 +9,7 @@ from django.db import transaction
 import pandas as pd
 from namefinder.models import (
     Instance, Name, Fragment, NameType, WritingType, 
-    CompletenessType, Determinative
+    CompletenessType, Determinative, DeterminativeVariant
 )
 
 
@@ -120,12 +120,14 @@ class Command(BaseCommand):
                     # Get Determinative
                     det_name = str(row['Determinative']).strip() if pd.notna(row['Determinative']) else None
                     det_obj = None
-                    if det_name:
-                        if det_name not in determinative_cache:
-                            det_obj, _ = Determinative.objects.get_or_create(name=det_name)
-                            determinative_cache[det_name] = det_obj
+                    canonical_det_name = Determinative.normalize_name(det_name) if det_name else None
+                    raw_det_name = Determinative.clean_variant_value(det_name) if det_name else ''
+                    if canonical_det_name:
+                        if canonical_det_name not in determinative_cache:
+                            det_obj, _ = Determinative.objects.get_or_create(name=canonical_det_name)
+                            determinative_cache[canonical_det_name] = det_obj
                         else:
-                            det_obj = determinative_cache[det_name]
+                            det_obj = determinative_cache[canonical_det_name]
                     
                     # Get text fields
                     title_epithet = str(row['Title_Epithet']).strip() if pd.notna(row['Title_Epithet']) else None
@@ -133,6 +135,13 @@ class Command(BaseCommand):
                     line = str(row['Line']).strip() if pd.notna(row['Line']) else None
                     notes = str(row['Notes']).strip() if pd.notna(row['Notes']) else None
                     
+                    det_variant = None
+                    if raw_det_name and not dry_run:
+                        det_variant = DeterminativeVariant.get_or_create_for_value(
+                            raw_det_name,
+                            determinative=det_obj,
+                        )
+
                     if not dry_run:
                         Instance.objects.create(
                             original_id=original_id,
@@ -142,7 +151,7 @@ class Command(BaseCommand):
                             spelling=spelling,
                             instance_type=type_obj,
                             writing_type=writing_obj,
-                            determinative=det_obj,
+                            determinative_variant=det_variant,
                             line=line,
                             completeness=completeness_obj,
                             notes=notes,

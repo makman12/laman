@@ -85,6 +85,9 @@
         
         <div class="form-section">
             <h2>Determinatives</h2>
+            <div class="form-help" style="margin-bottom: 0.75rem;">
+                <a href="{% url 'namefinder:determinative_manager' %}">Manage determinatives</a>
+            </div>
             <div class="checkbox-group">
                 {% for checkbox in form.determinatives %}
                 <label class="checkbox-item">

@@ -1,0 +1,111 @@
+{% extends 'namefinder/base.html' %}
+
+{% block title %}{{ determinative.name }} - LAMAN{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="{% url 'namefinder:index' %}">Search</a>
+    <span>›</span>
+    <a href="{% url 'namefinder:determinative_manager' %}">Determinatives</a>
+    <span>›</span>
+    {{ determinative.name }}
+</div>
+
+<div class="form-container">
+    <h1 class="page-title">{{ determinative.name }}</h1>
+
+    <div class="form-section">
+        <h2>Edit Determinative</h2>
+        <form method="post" class="detail-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update_determinative">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="{{ edit_form.name.id_for_label }}">Name</label>
+                    {{ edit_form.name }}
+                    {% if edit_form.name.errors %}<div class="form-error">{{ edit_form.name.errors.0 }}</div>{% endif %}
+                </div>
+                <div class="form-group form-checkbox-wrapper">
+                    <label class="checkbox-label">
+                        {{ edit_form.is_active }}
+                        <span>Active</span>
+                    </label>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+        <form method="post" class="detail-form" style="margin-top: 0.75rem;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete_determinative">
+            <div class="form-actions">
+                <button type="submit" class="btn btn-danger" onclick="return confirm('Delete this determinative? This only works when it is not linked to names or attestations.')">Delete Determinative</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="form-section">
+        <h2>Add Variant</h2>
+        <form method="post" class="detail-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_variant">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="{{ variant_form.value.id_for_label }}">Value</label>
+                    {{ variant_form.value }}
+                </div>
+                <div class="form-group">
+                    <label for="{{ variant_form.variant_kind.id_for_label }}">Kind</label>
+                    {{ variant_form.variant_kind }}
+                </div>
+                <div class="form-group form-checkbox-wrapper">
+                    <label class="checkbox-label">
+                        {{ variant_form.is_preferred }}
+                        <span>Preferred</span>
+                    </label>
+                </div>
+            </div>
+            {% if variant_form.errors %}<div class="form-error">{{ variant_form.errors }}</div>{% endif %}
+            <div class="form-actions">
+                <button type="submit" class="btn btn-secondary">Add Variant</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="form-section">
+        <h2>Variants</h2>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Value</th>
+                    <th>Kind</th>
+                    <th>Preferred</th>
+                    <th>Attestations</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for variant in variants %}
+                <tr>
+                    <td>{{ variant.value }}</td>
+                    <td>{{ variant.get_variant_kind_display }}</td>
+                    <td>{{ variant.is_preferred|yesno:"Yes,No" }}</td>
+                    <td>{{ variant.instance_count }}</td>
+                    <td>
+                        <form method="post" style="display:inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete_variant">
+                            <input type="hidden" name="variant_id" value="{{ variant.id }}">
+                            <button type="submit" class="btn btn-outline" {% if variant.instance_count %}disabled{% endif %}>Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5">No variants recorded.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -306,7 +306,7 @@
                     <select class="edit-mode inline-select-sm" name="determinative_{{ instance.id }}" style="display:none;">
                         <option value="">—</option>
                         {% for det in all_determinatives %}
-                        <option value="{{ det.id }}" {% if instance.determinative.id == det.id %}selected{% endif %}>{{ det.name }}</option>
+                        <option value="{{ det.id }}" {% if instance.determinative and instance.determinative.id == det.id %}selected{% endif %}>{{ det.name }}</option>
                         {% endfor %}
                     </select>
                     {% endif %}

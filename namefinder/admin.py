@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     NameType, WritingType, CompletenessType, PublicationType,
-    Milieu, Series, Determinative, Fragment, Name, Instance
+    Milieu, Series, Determinative, DeterminativeVariant, Fragment, Name, Instance
 )
 
 
@@ -47,8 +47,15 @@ class SeriesAdmin(admin.ModelAdmin):
 
 @admin.register(Determinative)
 class DeterminativeAdmin(admin.ModelAdmin):
-    list_display = ['id', 'name']
+    list_display = ['id', 'name', 'is_active']
     search_fields = ['name']
+
+
+@admin.register(DeterminativeVariant)
+class DeterminativeVariantAdmin(admin.ModelAdmin):
+    list_display = ['id', 'value', 'determinative', 'variant_kind', 'is_preferred']
+    list_filter = ['variant_kind', 'is_preferred', 'determinative']
+    search_fields = ['value', 'determinative__name']
 
 
 # =============================================================================
@@ -59,7 +66,7 @@ class InstanceInline(admin.TabularInline):
     """Inline display of instances in Name admin"""
     model = Instance
     extra = 0
-    fields = ['fragment', 'line', 'spelling', 'instance_type', 'writing_type', 'determinative', 'completeness']
+    fields = ['fragment', 'line', 'spelling', 'instance_type', 'writing_type', 'determinative_variant', 'completeness']
     autocomplete_fields = ['fragment']
     show_change_link = True
 
@@ -114,9 +121,9 @@ class NameAdmin(admin.ModelAdmin):
 
 @admin.register(Instance)
 class InstanceAdmin(admin.ModelAdmin):
-    list_display = ['id', 'original_id', 'name', 'fragment', 'line', 'spelling', 'instance_type', 'writing_type', 'completeness']
-    list_filter = ['instance_type', 'writing_type', 'completeness', 'determinative']
-    search_fields = ['name__name', 'fragment__series_fragment', 'spelling', 'line', 'notes']
+    list_display = ['id', 'original_id', 'name', 'fragment', 'line', 'spelling', 'determinative_variant', 'instance_type', 'writing_type', 'completeness']
+    list_filter = ['instance_type', 'writing_type', 'completeness', 'determinative_variant__determinative']
+    search_fields = ['name__name', 'fragment__series_fragment', 'spelling', 'line', 'notes', 'determinative_variant__value']
     autocomplete_fields = ['name', 'fragment']
     ordering = ['name__name', 'fragment__series_fragment']
     
@@ -125,10 +132,10 @@ class InstanceAdmin(admin.ModelAdmin):
             'fields': ('original_id', 'name', 'fragment', 'line')
         }),
         ('Details', {
-            'fields': ('spelling', 'title_epithet')
+            'fields': ('spelling', 'title_epithet', 'determinative_variant')
         }),
         ('Classification', {
-            'fields': ('instance_type', 'writing_type', 'determinative', 'completeness')
+            'fields': ('instance_type', 'writing_type', 'completeness')
         }),
         ('Notes', {
             'fields': ('notes',),
@@ -138,5 +145,5 @@ class InstanceAdmin(admin.ModelAdmin):
     
     def get_queryset(self, request):
         return super().get_queryset(request).select_related(
-            'name', 'fragment', 'instance_type', 'writing_type', 'determinative', 'completeness'
+            'name', 'fragment', 'instance_type', 'writing_type', 'determinative_variant', 'determinative_variant__determinative', 'completeness'
         )

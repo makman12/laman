@@ -19,6 +19,10 @@
                 <input type="checkbox" id="unlinked" name="unlinked" value="1" {% if show_unlinked %}checked{% endif %}>
                 <label for="unlinked">Unlinked Only</label>
             </div>
+            <div class="search-checkbox">
+                <input type="checkbox" id="tlh_unsynced" name="tlh_unsynced" value="1" {% if show_tlh_unsynced %}checked{% endif %}>
+                <label for="tlh_unsynced">TLH Unsynced Only</label>
+            </div>
             <button type="submit" class="search-btn">Search</button>
         </div>
 
@@ -82,6 +86,18 @@
                     {% endfor %}
                 </select>
             </div>
+
+            <div class="filter-group">
+                <label for="tlh_status">TLH Status</label>
+                <select id="tlh_status" name="tlh_status" class="filter-select">
+                    <option value="">All TLH Statuses</option>
+                    {% for value, label in tlh_status_choices %}
+                    <option value="{{ value }}" {% if selected_tlh_status == value %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
     </form>
 </div>
@@ -93,6 +109,7 @@
             Found {{ page_obj.paginator.count }} attestation{{ page_obj.paginator.count|pluralize }}
             {% if query %}matching "{{ query }}"{% endif %}
             {% if show_unlinked %}(unlinked only){% endif %}
+            {% if show_tlh_unsynced %}(TLH unsynced only){% endif %}
         </p>
     </div>
 
@@ -107,6 +124,8 @@
                     <th>Type</th>
                     <th>Writing</th>
                     <th>Det.</th>
+                    <th>TLH</th>
+                    <th>TLH Detail</th>
                     <th>Title/Epithet</th>
                     <th>Notes</th>
                     {% if user.is_authenticated %}
@@ -135,7 +154,19 @@
                     <td>{{ inst.spelling|default:"—"|safe }}</td>
                     <td>{{ inst.instance_type.name|default:"—" }}</td>
                     <td>{{ inst.writing_type.name|default:"—" }}</td>
-                    <td>{{ inst.determinative.name|default:"—" }}</td>
+                    <td>{{ inst.display_determinative|default:"—" }}</td>
+                    <td>
+                        <span class="tlh-badge {{ inst.tlh_match.css_class }}">{{ inst.tlh_match.label }}</span>
+                    </td>
+                    <td class="tlh-detail-cell">
+                        {% if inst.tlh_match.detail_lines %}
+                            {% for line in inst.tlh_match.detail_lines %}
+                            <div>{{ line }}</div>
+                            {% endfor %}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
                     <td>{{ inst.title_epithet|default:"—" }}</td>
                     <td>{{ inst.notes|default:"—" }}</td>
                     {% if user.is_authenticated %}
@@ -151,10 +182,10 @@
 
     {% if page_obj.paginator.num_pages > 1 %}
     <div class="pagination">
-        {% with qp=query nt=selected_name_type wt=selected_writing_type dt=selected_determinative cm=selected_completeness sr=selected_series ul=show_unlinked %}
+        {% with qp=query nt=selected_name_type wt=selected_writing_type dt=selected_determinative cm=selected_completeness sr=selected_series ts=selected_tlh_status ul=show_unlinked tu=show_tlh_unsynced %}
         {% if page_obj.has_previous %}
-        <a href="?{% if qp %}q={{ qp }}&{% endif %}{% if nt %}name_type={{ nt }}&{% endif %}{% if wt %}writing_type={{ wt }}&{% endif %}{% if dt %}determinative={{ dt }}&{% endif %}{% if cm %}completeness={{ cm }}&{% endif %}{% if sr %}series={{ sr }}&{% endif %}{% if ul %}unlinked=1&{% endif %}page=1">&laquo; First</a>
-        <a href="?{% if qp %}q={{ qp }}&{% endif %}{% if nt %}name_type={{ nt }}&{% endif %}{% if wt %}writing_type={{ wt }}&{% endif %}{% if dt %}determinative={{ dt }}&{% endif %}{% if cm %}completeness={{ cm }}&{% endif %}{% if sr %}series={{ sr }}&{% endif %}{% if ul %}unlinked=1&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+        <a href="?{% if qp %}q={{ qp }}&{% endif %}{% if nt %}name_type={{ nt }}&{% endif %}{% if wt %}writing_type={{ wt }}&{% endif %}{% if dt %}determinative={{ dt }}&{% endif %}{% if cm %}completeness={{ cm }}&{% endif %}{% if sr %}series={{ sr }}&{% endif %}{% if ts %}tlh_status={{ ts }}&{% endif %}{% if ul %}unlinked=1&{% endif %}{% if tu %}tlh_unsynced=1&{% endif %}page=1">&laquo; First</a>
+        <a href="?{% if qp %}q={{ qp }}&{% endif %}{% if nt %}name_type={{ nt }}&{% endif %}{% if wt %}writing_type={{ wt }}&{% endif %}{% if dt %}determinative={{ dt }}&{% endif %}{% if cm %}completeness={{ cm }}&{% endif %}{% if sr %}series={{ sr }}&{% endif %}{% if ts %}tlh_status={{ ts }}&{% endif %}{% if ul %}unlinked=1&{% endif %}{% if tu %}tlh_unsynced=1&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
         {% endif %}
 
         <span class="current">
@@ -162,14 +193,14 @@
         </span>
 
         {% if page_obj.has_next %}
-        <a href="?{% if qp %}q={{ qp }}&{% endif %}{% if nt %}name_type={{ nt }}&{% endif %}{% if wt %}writing_type={{ wt }}&{% endif %}{% if dt %}determinative={{ dt }}&{% endif %}{% if cm %}completeness={{ cm }}&{% endif %}{% if sr %}series={{ sr }}&{% endif %}{% if ul %}unlinked=1&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
-        <a href="?{% if qp %}q={{ qp }}&{% endif %}{% if nt %}name_type={{ nt }}&{% endif %}{% if wt %}writing_type={{ wt }}&{% endif %}{% if dt %}determinative={{ dt }}&{% endif %}{% if cm %}completeness={{ cm }}&{% endif %}{% if sr %}series={{ sr }}&{% endif %}{% if ul %}unlinked=1&{% endif %}page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
+        <a href="?{% if qp %}q={{ qp }}&{% endif %}{% if nt %}name_type={{ nt }}&{% endif %}{% if wt %}writing_type={{ wt }}&{% endif %}{% if dt %}determinative={{ dt }}&{% endif %}{% if cm %}completeness={{ cm }}&{% endif %}{% if sr %}series={{ sr }}&{% endif %}{% if ts %}tlh_status={{ ts }}&{% endif %}{% if ul %}unlinked=1&{% endif %}{% if tu %}tlh_unsynced=1&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+        <a href="?{% if qp %}q={{ qp }}&{% endif %}{% if nt %}name_type={{ nt }}&{% endif %}{% if wt %}writing_type={{ wt }}&{% endif %}{% if dt %}determinative={{ dt }}&{% endif %}{% if cm %}completeness={{ cm }}&{% endif %}{% if sr %}series={{ sr }}&{% endif %}{% if ts %}tlh_status={{ ts }}&{% endif %}{% if ul %}unlinked=1&{% endif %}{% if tu %}tlh_unsynced=1&{% endif %}page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
         {% endif %}
         {% endwith %}
     </div>
     {% endif %}
 </div>
-{% elif query or show_unlinked or selected_name_type or selected_writing_type or selected_determinative or selected_completeness or selected_series %}
+{% elif query or show_unlinked or show_tlh_unsynced or selected_name_type or selected_writing_type or selected_determinative or selected_completeness or selected_series or selected_tlh_status %}
 <div class="results-section">
     <p class="text-muted">No attestations found matching your search criteria.</p>
 </div>
@@ -208,10 +239,47 @@
 }
 
 .attestation-table td:nth-child(4),
-.attestation-table td:nth-child(8),
-.attestation-table td:nth-child(9) {
+.attestation-table td:nth-child(9),
+.attestation-table td:nth-child(10),
+.attestation-table td:nth-child(11) {
     white-space: normal;
     max-width: 200px;
+}
+
+.tlh-detail-cell {
+    min-width: 340px;
+    white-space: normal;
+    font-size: 0.84rem;
+    line-height: 1.35;
+}
+
+.tlh-badge {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.tlh-matched {
+    background: #e6f4ea;
+    color: #1f6f43;
+}
+
+.tlh-ambiguous-token,
+.tlh-multiple-docs {
+    background: #fff4d6;
+    color: #8a6116;
+}
+
+.tlh-line-not-found,
+.tlh-no-name-token,
+.tlh-unparsed-line,
+.tlh-no-doc,
+.tlh-matcher-unavailable {
+    background: #fdeaea;
+    color: #a33a32;
 }
 
 .attestation-table tbody tr:hover {

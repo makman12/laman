@@ -3,18 +3,120 @@ import csv
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse
 from django.core.paginator import Paginator
-from django.db.models import Q, Count
+from django.db.models import Q, Count, OuterRef, Subquery, IntegerField, Value
+from django.db.models.functions import Coalesce
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .models import (
     Name, Instance, Fragment, Series, PublicationType,
-    NameType, WritingType, CompletenessType, Milieu, Determinative,
-    DataReport
+    NameType, WritingType, CompletenessType, Milieu, Determinative, DeterminativeVariant,
+    DataReport, InstanceTLHMatch
 )
 from .forms import (
-    LoginForm, NameForm, FragmentForm, InstanceForm, InstanceInlineForm
+    LoginForm, NameForm, FragmentForm, InstanceForm, InstanceInlineForm,
+    DeterminativeForm, DeterminativeVariantForm, DeterminativeMergeForm
 )
+
+
+def build_tlh_context(match_record):
+    if match_record is None:
+        return {
+            'status': 'not_synced',
+            'label': 'Not synced',
+            'css_class': 'tlh-not-synced',
+            'detail_lines': ['No persisted TLH match record yet. Run the sync command.'],
+        }
+
+    status = match_record.status
+    detail_lines = []
+    if match_record.doc_id:
+        detail_lines.append(f"Doc: {match_record.doc_id}")
+
+    matched_lines = match_record.matched_lines or []
+    if matched_lines:
+        line_preview = '; '.join(
+            f"{line['line_number_raw']} => {(line['transliteration_plain'] or '').strip()}"
+            for line in matched_lines[:2]
+        )
+        if len(matched_lines) > 2:
+            line_preview += '; ...'
+        detail_lines.append(f"Corpus lines: {line_preview}")
+
+    if status == 'matched':
+        detail_lines.append(
+            f"Matched token: {match_record.suggested_spelling or '—'} [{match_record.suggested_determinative or '—'}]"
+        )
+    elif status == 'ambiguous_token':
+        candidates = (match_record.candidates or [])[:4]
+        if candidates:
+            candidate_preview = '; '.join(
+                f"{cand['raw_word']} [{cand['determinative'] or '—'}] <{cand.get('match_score', 0):.2f}>"
+                for cand in candidates
+            )
+            detail_lines.append(f"Candidates: {candidate_preview}")
+    elif status == 'line_not_found':
+        targets = match_record.targets or []
+        if targets:
+            target_preview = ', '.join(target.get('label', '') for target in targets[:6] if target.get('label'))
+            detail_lines.append(f"LAMAN targets: {target_preview}")
+    elif status == 'no_name_token':
+        detail_lines.append('Line matched, but no suitable token was found on the TLH line.')
+    elif status == 'no_doc':
+        detail_lines.append('Fragment reference did not resolve to a TLH document.')
+    elif status == 'multiple_docs':
+        detail_lines.append('Reference resolves to multiple TLH documents.')
+    elif status == 'unparsed_line':
+        detail_lines.append('LAMAN line notation could not be parsed.')
+
+    labels = {
+        'matched': 'Matched',
+        'ambiguous_token': 'Ambiguous token',
+        'line_not_found': 'Line not found',
+        'no_name_token': 'No name token',
+        'no_doc': 'No doc',
+        'multiple_docs': 'Multiple docs',
+        'unparsed_line': 'Unparsed line',
+        'not_synced': 'Not synced',
+    }
+    return {
+        'status': status,
+        'label': labels.get(status, status.replace('_', ' ').title()),
+        'css_class': f"tlh-{status.replace('_', '-')}",
+        'detail_lines': detail_lines,
+        'suggested_spelling': match_record.suggested_spelling,
+        'suggested_determinative': match_record.suggested_determinative,
+    }
+
+
+def get_active_determinatives_queryset():
+    return Determinative.objects.filter(is_active=True).order_by('name')
+
+
+def merge_determinatives(source, target):
+    if source.pk == target.pk:
+        return
+
+    target.ensure_preferred_variant()
+
+    for name in source.names.all():
+        name.determinatives.add(target)
+        name.determinatives.remove(source)
+
+    target_variants = {variant.value: variant for variant in target.variants.all()}
+    for variant in list(source.variants.all()):
+        existing = target_variants.get(variant.value)
+        if existing:
+            Instance.objects.filter(determinative_variant=variant).update(determinative_variant=existing)
+            variant.delete()
+            continue
+        variant.determinative = target
+        if variant.is_preferred and not target.preferred_variant:
+            variant.is_preferred = True
+        variant.save()
+        target_variants[variant.value] = variant
+
+    source.delete()
 
 
 def index(request):
@@ -23,6 +125,7 @@ def index(request):
     use_regex = request.GET.get('regex', '') == '1'
     selected_name_type = request.GET.get('name_type', '')
     selected_writing_type = request.GET.get('writing_type', '')
+    selected_determinative = request.GET.get('determinative', '')
     selected_completeness = request.GET.get('completeness', '')
     selected_milieu = request.GET.get('milieu', '')
     selected_date = request.GET.get('date', '')
@@ -31,7 +134,9 @@ def index(request):
     
     # Get filter options
     name_types = NameType.objects.all()
+    instance_types = NameType.objects.all()
     writing_types = WritingType.objects.all()
+    determinatives = get_active_determinatives_queryset()
     completeness_types = CompletenessType.objects.all()
     milieus = Milieu.objects.all()
     
@@ -76,6 +181,8 @@ def index(request):
         names = names.filter(name_type_id=selected_name_type)
     if selected_writing_type:
         names = names.filter(writing_type_id=selected_writing_type)
+    if selected_determinative:
+        names = names.filter(instances__determinative_variant__determinative_id=selected_determinative).distinct()
     if selected_completeness:
         names = names.filter(completeness_id=selected_completeness)
     if selected_milieu:
@@ -99,12 +206,15 @@ def index(request):
         'query': query,
         'use_regex': use_regex,
         'name_types': name_types,
+        'instance_types': instance_types,
         'writing_types': writing_types,
+        'determinatives': determinatives,
         'completeness_types': completeness_types,
         'milieus': milieus,
         'date_choices': date_choices,
         'selected_name_type': selected_name_type,
         'selected_writing_type': selected_writing_type,
+        'selected_determinative': selected_determinative,
         'selected_completeness': selected_completeness,
         'selected_milieu': selected_milieu,
         'selected_date': selected_date,
@@ -125,7 +235,7 @@ def name_detail(request, pk):
     
     instances = Instance.objects.filter(name=name).select_related(
         'fragment', 'fragment__series', 'instance_type',
-        'writing_type', 'determinative', 'completeness'
+        'writing_type', 'determinative_variant', 'determinative_variant__determinative', 'completeness'
     ).order_by('fragment__series__name', 'fragment__fragment_number', 'line')
     
     determinatives = name.determinatives.all()
@@ -143,7 +253,7 @@ def name_detail(request, pk):
     writing_types = WritingType.objects.all()
     completeness_types = CompletenessType.objects.all()
     milieus = Milieu.objects.all()
-    all_determinatives = Determinative.objects.all()
+    all_determinatives = get_active_determinatives_queryset()
     # Note: fragments are loaded via AJAX autocomplete, not passed to context
     
     context = {
@@ -235,7 +345,7 @@ def volume_detail(request, series_id, volume):
         fragment__in=fragments
     ).select_related(
         'name', 'name__name_type', 'instance_type', 'writing_type',
-        'determinative', 'completeness', 'fragment'
+        'determinative_variant', 'determinative_variant__determinative', 'completeness', 'fragment'
     ).order_by('fragment__fragment_number', 'line', 'name__name')
 
     context = {
@@ -331,14 +441,14 @@ def cth_detail(request, cth_number):
             fragment__cth__regex=r'^' + cth_number + r'([^0-9]|$)'
         ).select_related(
             'name', 'name__name_type', 'fragment', 'fragment__series',
-            'writing_type', 'determinative', 'completeness'
+            'writing_type', 'determinative_variant', 'determinative_variant__determinative', 'completeness'
         ).order_by('fragment__cth', 'fragment__series__name', 'fragment__fragment_number', 'line')
     else:
         all_instances = Instance.objects.filter(
             fragment__cth=cth_number
         ).select_related(
             'name', 'name__name_type', 'fragment', 'fragment__series',
-            'writing_type', 'determinative', 'completeness'
+            'writing_type', 'determinative_variant', 'determinative_variant__determinative', 'completeness'
         ).order_by('fragment__series__name', 'fragment__fragment_number', 'line')
     
     # Count unique names
@@ -371,7 +481,7 @@ def fragment_detail(request, pk):
     )
     
     instances = Instance.objects.filter(fragment=fragment).select_related(
-        'name', 'name__name_type', 'instance_type', 'writing_type', 'determinative', 'completeness'
+        'name', 'name__name_type', 'instance_type', 'writing_type', 'determinative_variant', 'determinative_variant__determinative', 'completeness'
     ).order_by('line', 'name__name')
     
     # Get all options for inline editing dropdowns
@@ -379,7 +489,7 @@ def fragment_detail(request, pk):
     publication_types = PublicationType.objects.all()
     name_types = NameType.objects.all()
     writing_types = WritingType.objects.all()
-    all_determinatives = Determinative.objects.all()
+    all_determinatives = get_active_determinatives_queryset()
     all_names = Name.objects.select_related('name_type').order_by('name')
     
     context = {
@@ -485,8 +595,10 @@ def export_search_csv(request):
     use_regex = request.GET.get('regex', '') == '1'
     selected_name_type = request.GET.get('name_type', '')
     selected_writing_type = request.GET.get('writing_type', '')
+    selected_determinative = request.GET.get('determinative', '')
     selected_completeness = request.GET.get('completeness', '')
     selected_milieu = request.GET.get('milieu', '')
+    selected_date = request.GET.get('date', '')
     show_fragmentary = request.GET.get('fragmentary', '') == '1'
 
     names = Name.objects.select_related(
@@ -521,10 +633,14 @@ def export_search_csv(request):
         names = names.filter(name_type_id=selected_name_type)
     if selected_writing_type:
         names = names.filter(writing_type_id=selected_writing_type)
+    if selected_determinative:
+        names = names.filter(instances__determinative_variant__determinative_id=selected_determinative).distinct()
     if selected_completeness:
         names = names.filter(completeness_id=selected_completeness)
     if selected_milieu:
         names = names.filter(milieu_id=selected_milieu)
+    if selected_date:
+        names = names.filter(instances__fragment__date=selected_date).distinct()
     if not show_fragmentary:
         names = names.filter(is_fragmentary=False)
 
@@ -559,7 +675,7 @@ def export_name_csv(request, pk):
     
     instances = Instance.objects.filter(name=name).select_related(
         'fragment', 'fragment__series', 'instance_type',
-        'writing_type', 'determinative', 'completeness'
+        'writing_type', 'determinative_variant', 'determinative_variant__determinative', 'completeness'
     ).order_by('fragment__series__name', 'fragment__fragment_number', 'line')
     
     # Create CSV response
@@ -568,7 +684,7 @@ def export_name_csv(request, pk):
     response['Content-Disposition'] = f'attachment; filename="laman_{safe_name}_attestations.csv"'
     
     writer = csv.writer(response)
-    writer.writerow(['Name', 'Fragment', 'Line', 'Spelling', 'Writing Type', 'Determinative', 'Title/Epithet', 'Completeness'])
+    writer.writerow(['Name', 'Fragment', 'Line', 'Spelling', 'Writing Type', 'Determinative Spelling', 'Determinative', 'Title/Epithet', 'Completeness'])
     
     for inst in instances:
         writer.writerow([
@@ -577,6 +693,7 @@ def export_name_csv(request, pk):
             inst.line or '',
             strip_html(inst.spelling) if inst.spelling else '',
             inst.writing_type.name if inst.writing_type else '',
+            inst.display_determinative or '',
             inst.determinative.name if inst.determinative else '',
             inst.title_epithet or '',
             inst.completeness.name if inst.completeness else '',
@@ -591,7 +708,7 @@ def export_fragment_csv(request, pk):
     
     instances = Instance.objects.filter(fragment=fragment).select_related(
         'name', 'name__name_type', 'instance_type', 
-        'writing_type', 'determinative', 'completeness'
+        'writing_type', 'determinative_variant', 'determinative_variant__determinative', 'completeness'
     ).order_by('line', 'name__name')
     
     # Create CSV response
@@ -600,7 +717,7 @@ def export_fragment_csv(request, pk):
     response['Content-Disposition'] = f'attachment; filename="laman_{safe_fragment}_names.csv"'
     
     writer = csv.writer(response)
-    writer.writerow(['Fragment', 'Name', 'Name Type', 'Line', 'Spelling', 'Writing Type', 'Determinative', 'Title/Epithet', 'Completeness'])
+    writer.writerow(['Fragment', 'Name', 'Name Type', 'Line', 'Spelling', 'Writing Type', 'Determinative Spelling', 'Determinative', 'Title/Epithet', 'Completeness'])
     
     for inst in instances:
         writer.writerow([
@@ -610,6 +727,7 @@ def export_fragment_csv(request, pk):
             inst.line or '',
             strip_html(inst.spelling) if inst.spelling else '',
             inst.writing_type.name if inst.writing_type else '',
+            inst.display_determinative or '',
             inst.determinative.name if inst.determinative else '',
             inst.title_epithet or '',
             inst.completeness.name if inst.completeness else '',
@@ -692,6 +810,147 @@ def name_edit(request, pk):
         'action': 'Edit',
         'title': f'Edit: {name.name}',
         'object': name,
+    })
+
+
+@login_required
+def determinative_manager(request):
+    """Dedicated manager for determinatives and orphan variants."""
+    create_form = DeterminativeForm(prefix='create')
+    merge_form = DeterminativeMergeForm(prefix='merge')
+    show_zero = request.GET.get('show_zero') == '1'
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'create':
+            create_form = DeterminativeForm(request.POST, prefix='create')
+            if create_form.is_valid():
+                determinative = create_form.save()
+                determinative.ensure_preferred_variant()
+                messages.success(request, f'Determinative "{determinative.name}" created successfully.')
+                return redirect('namefinder:determinative_detail', pk=determinative.pk)
+        elif action == 'merge':
+            merge_form = DeterminativeMergeForm(request.POST, prefix='merge')
+            if merge_form.is_valid():
+                merge_determinatives(
+                    merge_form.cleaned_data['source'],
+                    merge_form.cleaned_data['target'],
+                )
+                messages.success(request, 'Determinatives merged successfully.')
+                return redirect('namefinder:determinative_manager')
+        elif action == 'map_orphan':
+            variant = get_object_or_404(DeterminativeVariant, pk=request.POST.get('variant_id'))
+            target = get_object_or_404(Determinative, pk=request.POST.get('target_determinative'))
+            variant.determinative = target
+            variant.is_preferred = False
+            variant.save()
+            messages.success(request, f'Variant "{variant.value}" mapped to {target.name}.')
+            return redirect('namefinder:determinative_manager')
+
+    name_count_subq = Name.determinatives.through.objects.filter(
+        determinative_id=OuterRef('pk')
+    ).values('determinative_id').annotate(
+        c=Count('*')
+    ).values('c')[:1]
+    variant_count_subq = DeterminativeVariant.objects.filter(
+        determinative_id=OuterRef('pk')
+    ).values('determinative_id').annotate(
+        c=Count('*')
+    ).values('c')[:1]
+    instance_count_subq = Instance.objects.filter(
+        determinative_variant__determinative_id=OuterRef('pk')
+    ).values('determinative_variant__determinative_id').annotate(
+        c=Count('*')
+    ).values('c')[:1]
+
+    determinatives = Determinative.objects.annotate(
+        name_count=Coalesce(Subquery(name_count_subq, output_field=IntegerField()), Value(0)),
+        instance_count=Coalesce(Subquery(instance_count_subq, output_field=IntegerField()), Value(0)),
+        variant_count=Coalesce(Subquery(variant_count_subq, output_field=IntegerField()), Value(0)),
+    ).order_by('name')
+    orphan_variants = DeterminativeVariant.objects.filter(determinative__isnull=True).annotate(
+        instance_count=Count('instances', distinct=True)
+    )
+    if not show_zero:
+        orphan_variants = orphan_variants.filter(instance_count__gt=0)
+    orphan_variants = orphan_variants.order_by('-instance_count', 'value')
+
+    return render(request, 'namefinder/determinative_manager.html', {
+        'create_form': create_form,
+        'merge_form': merge_form,
+        'determinatives': determinatives,
+        'orphan_variants': orphan_variants,
+        'show_zero': show_zero,
+        'active_section': 'determinatives',
+    })
+
+
+@login_required
+def determinative_detail(request, pk):
+    """Manage one determinative and its mapped variants."""
+    determinative = get_object_or_404(
+        Determinative.objects.prefetch_related('variants', 'names'),
+        pk=pk,
+    )
+
+    edit_form = DeterminativeForm(instance=determinative, prefix='det')
+    variant_form = DeterminativeVariantForm(prefix='variant')
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'update_determinative':
+            edit_form = DeterminativeForm(request.POST, instance=determinative, prefix='det')
+            if edit_form.is_valid():
+                edit_form.save()
+                messages.success(request, 'Determinative updated successfully.')
+                return redirect('namefinder:determinative_detail', pk=determinative.pk)
+        elif action == 'delete_determinative':
+            if determinative.names.exists():
+                messages.error(request, 'Cannot delete a determinative that is linked to names.')
+                return redirect('namefinder:determinative_detail', pk=determinative.pk)
+            if determinative.variants.filter(instances__isnull=False).exists():
+                messages.error(request, 'Cannot delete a determinative that is linked to attestations.')
+                return redirect('namefinder:determinative_detail', pk=determinative.pk)
+            det_name = determinative.name
+            determinative.delete()
+            messages.success(request, f'Determinative "{det_name}" deleted successfully.')
+            return redirect('namefinder:determinative_manager')
+        elif action == 'add_variant':
+            variant_form = DeterminativeVariantForm(request.POST, prefix='variant')
+            if variant_form.is_valid():
+                variant = variant_form.save(commit=False)
+                variant.determinative = determinative
+                variant.save()
+                if variant.is_preferred or not determinative.variants.filter(is_preferred=True).exists():
+                    determinative.ensure_preferred_variant()
+                messages.success(request, f'Variant "{variant.value}" added.')
+                return redirect('namefinder:determinative_detail', pk=determinative.pk)
+        elif action == 'update_variant':
+            variant = get_object_or_404(DeterminativeVariant, pk=request.POST.get('variant_id'), determinative=determinative)
+            variant_form = DeterminativeVariantForm(request.POST, instance=variant, prefix='variant')
+            if variant_form.is_valid():
+                variant = variant_form.save(commit=False)
+                variant.determinative = determinative
+                variant.save()
+                messages.success(request, 'Variant updated successfully.')
+                return redirect('namefinder:determinative_detail', pk=determinative.pk)
+        elif action == 'delete_variant':
+            variant = get_object_or_404(DeterminativeVariant, pk=request.POST.get('variant_id'), determinative=determinative)
+            if variant.instances.exists():
+                messages.error(request, 'Cannot delete a variant that is still linked to attestations.')
+            else:
+                variant.delete()
+                if determinative.variants.exists() and not determinative.variants.filter(is_preferred=True).exists():
+                    determinative.ensure_preferred_variant()
+                messages.success(request, 'Variant deleted successfully.')
+            return redirect('namefinder:determinative_detail', pk=determinative.pk)
+
+    variants = determinative.variants.annotate(instance_count=Count('instances', distinct=True)).order_by('-is_preferred', 'value')
+    return render(request, 'namefinder/determinative_detail.html', {
+        'determinative': determinative,
+        'edit_form': edit_form,
+        'variant_form': variant_form,
+        'variants': variants,
     })
 
 
@@ -818,12 +1077,20 @@ def instance_create(request):
 def instance_edit(request, pk):
     """Edit an existing instance"""
     instance = get_object_or_404(Instance, pk=pk)
+    modal_mode = request.GET.get('modal') == '1'
+    next_url = request.GET.get('next') or request.POST.get('next') or ''
     
     if request.method == 'POST':
         form = InstanceForm(request.POST, instance=instance)
         if form.is_valid():
             form.save()
             messages.success(request, 'Attestation updated successfully.')
+            if modal_mode:
+                redirect_url = request.path
+                query_params = ['modal=1', 'saved=1']
+                if next_url:
+                    query_params.append(f'next={next_url}')
+                return redirect(f'{redirect_url}?{"&".join(query_params)}')
             if instance.name:
                 return redirect('namefinder:name_detail', pk=instance.name.pk)
             return redirect('namefinder:index')
@@ -835,6 +1102,9 @@ def instance_edit(request, pk):
         'action': 'Edit',
         'title': 'Edit Attestation',
         'object': instance,
+        'modal_mode': modal_mode,
+        'saved': request.GET.get('saved') == '1',
+        'next_url': next_url,
     })
 
 
@@ -959,21 +1229,26 @@ def attestation_search(request):
     selected_determinative = request.GET.get('determinative', '')
     selected_completeness = request.GET.get('completeness', '')
     selected_series = request.GET.get('series', '')
+    selected_tlh_status = request.GET.get('tlh_status', '')
     show_unlinked = request.GET.get('unlinked', '') == '1'
+    show_tlh_unsynced = request.GET.get('tlh_unsynced', '') == '1'
     page_number = request.GET.get('page', 1)
 
     # Get filter options
     name_types = NameType.objects.all()
     writing_types = WritingType.objects.all()
-    determinatives = Determinative.objects.all()
+    determinatives = get_active_determinatives_queryset()
     completeness_types = CompletenessType.objects.all()
     series_list = Series.objects.annotate(
         instance_count=Count('fragments__instances')
     ).filter(instance_count__gt=0).order_by('name')
+    tlh_status_choices = [('not_synced', 'Not synced')] + list(InstanceTLHMatch.STATUS_CHOICES)
 
     instances = Instance.objects.select_related(
         'name', 'name__name_type', 'fragment', 'fragment__series',
-        'instance_type', 'writing_type', 'determinative', 'completeness'
+        'instance_type', 'writing_type', 'determinative_variant',
+        'determinative_variant__determinative', 'completeness',
+        'tlh_match_record'
     )
 
     # Text search across spelling, name, fragment
@@ -989,23 +1264,31 @@ def attestation_search(request):
 
     # Apply filters
     if selected_name_type:
-        instances = instances.filter(instance_type_id=selected_name_type)
+        instances = instances.filter(name__name_type_id=selected_name_type)
     if selected_writing_type:
         instances = instances.filter(writing_type_id=selected_writing_type)
     if selected_determinative:
-        instances = instances.filter(determinative_id=selected_determinative)
+        instances = instances.filter(determinative_variant__determinative_id=selected_determinative)
     if selected_completeness:
         instances = instances.filter(completeness_id=selected_completeness)
     if selected_series:
         instances = instances.filter(fragment__series_id=selected_series)
     if show_unlinked:
         instances = instances.filter(name__isnull=True)
+    if selected_tlh_status == 'not_synced':
+        instances = instances.filter(tlh_match_record__isnull=True)
+    elif selected_tlh_status:
+        instances = instances.filter(tlh_match_record__status=selected_tlh_status)
+    if show_tlh_unsynced:
+        instances = instances.filter(tlh_match_record__isnull=True)
 
     instances = instances.order_by('fragment__series__name', 'fragment__fragment_number', 'line')
 
     # Paginate
     paginator = Paginator(instances, 50)
     page_obj = paginator.get_page(page_number)
+    for instance in page_obj.object_list:
+        instance.tlh_match = build_tlh_context(getattr(instance, 'tlh_match_record', None))
 
     context = {
         'instances': page_obj,
@@ -1016,12 +1299,15 @@ def attestation_search(request):
         'determinatives': determinatives,
         'completeness_types': completeness_types,
         'series_list': series_list,
+        'tlh_status_choices': tlh_status_choices,
         'selected_name_type': selected_name_type,
         'selected_writing_type': selected_writing_type,
         'selected_determinative': selected_determinative,
         'selected_completeness': selected_completeness,
         'selected_series': selected_series,
+        'selected_tlh_status': selected_tlh_status,
         'show_unlinked': show_unlinked,
+        'show_tlh_unsynced': show_tlh_unsynced,
     }
 
     return render(request, 'namefinder/attestation_search.html', context)

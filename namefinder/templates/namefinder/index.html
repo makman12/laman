@@ -50,7 +50,19 @@
                     {% endfor %}
                 </select>
             </div>
-            
+
+            <div class="filter-group">
+                <label for="determinative">Attested Determinative</label>
+                <select id="determinative" name="determinative" class="filter-select">
+                    <option value="">All Determinatives</option>
+                    {% for det in determinatives %}
+                    <option value="{{ det.id }}" {% if selected_determinative == det.id|stringformat:"s" %}selected{% endif %}>
+                        {{ det.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
             <div class="filter-group">
                 <label for="completeness">Completeness</label>
                 <select id="completeness" name="completeness" class="filter-select">
@@ -97,7 +109,7 @@
             Found {{ page_obj.paginator.count }} name{{ page_obj.paginator.count|pluralize }} 
             {% if query %}for "{{ query }}"{% endif %}
         </p>
-        <a href="{% url 'namefinder:export_search_csv' %}?{% if query %}q={{ query }}&{% endif %}{% if use_regex %}regex=1&{% endif %}{% if selected_name_type %}name_type={{ selected_name_type }}&{% endif %}{% if selected_writing_type %}writing_type={{ selected_writing_type }}&{% endif %}{% if selected_completeness %}completeness={{ selected_completeness }}&{% endif %}{% if selected_milieu %}milieu={{ selected_milieu }}&{% endif %}{% if show_fragmentary %}fragmentary=1{% endif %}" class="download-btn" title="Download results as CSV">
+        <a href="{% url 'namefinder:export_search_csv' %}?{% if query %}q={{ query }}&{% endif %}{% if use_regex %}regex=1&{% endif %}{% if selected_name_type %}name_type={{ selected_name_type }}&{% endif %}{% if selected_writing_type %}writing_type={{ selected_writing_type }}&{% endif %}{% if selected_determinative %}determinative={{ selected_determinative }}&{% endif %}{% if selected_completeness %}completeness={{ selected_completeness }}&{% endif %}{% if selected_milieu %}milieu={{ selected_milieu }}&{% endif %}{% if selected_date %}date={{ selected_date }}&{% endif %}{% if show_fragmentary %}fragmentary=1{% endif %}" class="download-btn" title="Download results as CSV">
             ⤓ Download CSV
         </a>
     </div>
@@ -123,10 +135,10 @@
     
     {% if page_obj.paginator.num_pages > 1 %}
     <div class="pagination">
-        {% with qp=query rg=use_regex nt=selected_name_type wt=selected_writing_type cm=selected_completeness ml=selected_milieu fr=show_fragmentary %}
+        {% with qp=query rg=use_regex nt=selected_name_type wt=selected_writing_type dt=selected_determinative cm=selected_completeness ml=selected_milieu dd=selected_date fr=show_fragmentary %}
         {% if page_obj.has_previous %}
-        <a href="?{% if qp %}q={{ qp }}&{% endif %}{% if rg %}regex=1&{% endif %}{% if nt %}name_type={{ nt }}&{% endif %}{% if wt %}writing_type={{ wt }}&{% endif %}{% if cm %}completeness={{ cm }}&{% endif %}{% if ml %}milieu={{ ml }}&{% endif %}{% if fr %}fragmentary=1&{% endif %}page=1">&laquo; First</a>
-        <a href="?{% if qp %}q={{ qp }}&{% endif %}{% if rg %}regex=1&{% endif %}{% if nt %}name_type={{ nt }}&{% endif %}{% if wt %}writing_type={{ wt }}&{% endif %}{% if cm %}completeness={{ cm }}&{% endif %}{% if ml %}milieu={{ ml }}&{% endif %}{% if fr %}fragmentary=1&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+        <a href="?{% if qp %}q={{ qp }}&{% endif %}{% if rg %}regex=1&{% endif %}{% if nt %}name_type={{ nt }}&{% endif %}{% if wt %}writing_type={{ wt }}&{% endif %}{% if dt %}determinative={{ dt }}&{% endif %}{% if cm %}completeness={{ cm }}&{% endif %}{% if ml %}milieu={{ ml }}&{% endif %}{% if dd %}date={{ dd }}&{% endif %}{% if fr %}fragmentary=1&{% endif %}page=1">&laquo; First</a>
+        <a href="?{% if qp %}q={{ qp }}&{% endif %}{% if rg %}regex=1&{% endif %}{% if nt %}name_type={{ nt }}&{% endif %}{% if wt %}writing_type={{ wt }}&{% endif %}{% if dt %}determinative={{ dt }}&{% endif %}{% if cm %}completeness={{ cm }}&{% endif %}{% if ml %}milieu={{ ml }}&{% endif %}{% if dd %}date={{ dd }}&{% endif %}{% if fr %}fragmentary=1&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
         {% endif %}
 
         <span class="current">
@@ -134,14 +146,14 @@
         </span>
 
         {% if page_obj.has_next %}
-        <a href="?{% if qp %}q={{ qp }}&{% endif %}{% if rg %}regex=1&{% endif %}{% if nt %}name_type={{ nt }}&{% endif %}{% if wt %}writing_type={{ wt }}&{% endif %}{% if cm %}completeness={{ cm }}&{% endif %}{% if ml %}milieu={{ ml }}&{% endif %}{% if fr %}fragmentary=1&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
-        <a href="?{% if qp %}q={{ qp }}&{% endif %}{% if rg %}regex=1&{% endif %}{% if nt %}name_type={{ nt }}&{% endif %}{% if wt %}writing_type={{ wt }}&{% endif %}{% if cm %}completeness={{ cm }}&{% endif %}{% if ml %}milieu={{ ml }}&{% endif %}{% if fr %}fragmentary=1&{% endif %}page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
+        <a href="?{% if qp %}q={{ qp }}&{% endif %}{% if rg %}regex=1&{% endif %}{% if nt %}name_type={{ nt }}&{% endif %}{% if wt %}writing_type={{ wt }}&{% endif %}{% if dt %}determinative={{ dt }}&{% endif %}{% if cm %}completeness={{ cm }}&{% endif %}{% if ml %}milieu={{ ml }}&{% endif %}{% if dd %}date={{ dd }}&{% endif %}{% if fr %}fragmentary=1&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+        <a href="?{% if qp %}q={{ qp }}&{% endif %}{% if rg %}regex=1&{% endif %}{% if nt %}name_type={{ nt }}&{% endif %}{% if wt %}writing_type={{ wt }}&{% endif %}{% if dt %}determinative={{ dt }}&{% endif %}{% if cm %}completeness={{ cm }}&{% endif %}{% if ml %}milieu={{ ml }}&{% endif %}{% if dd %}date={{ dd }}&{% endif %}{% if fr %}fragmentary=1&{% endif %}page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
         {% endif %}
         {% endwith %}
     </div>
     {% endif %}
 </div>
-{% elif query %}
+{% elif query or selected_name_type or selected_writing_type or selected_determinative or selected_completeness or selected_milieu or selected_date or show_fragmentary %}
 <div class="results-section">
     <p class="text-muted">No names found matching your search criteria.</p>
 </div>

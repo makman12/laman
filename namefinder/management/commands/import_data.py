@@ -8,7 +8,7 @@ from django.db import transaction
 import pandas as pd
 from namefinder.models import (
     NameType, WritingType, CompletenessType, PublicationType,
-    Milieu, Series, Determinative, Fragment, Name, Instance
+    Milieu, Series, Determinative, DeterminativeVariant, Fragment, Name, Instance
 )
 
 
@@ -310,13 +310,19 @@ class Command(BaseCommand):
             
             # Get Determinative
             determinative_obj = None
+            determinative_variant = None
             det_val = safe_get(row, 'Determinative')
-            determinative_name = str(det_val).strip() if det_val else None
+            cleaned_det = Determinative.clean_variant_value(det_val) if det_val else ''
+            determinative_name = Determinative.normalize_name(det_val) if det_val else None
             if determinative_name:
                 if determinative_name not in determinative_cache:
-                    determinative_obj, _ = Determinative.objects.get_or_create(name=determinative_name)
-                    determinative_cache[determinative_name] = determinative_obj
+                    determinative_cache[determinative_name] = Determinative.get_or_create_normalized(determinative_name)
                 determinative_obj = determinative_cache[determinative_name]
+            if cleaned_det:
+                determinative_variant = DeterminativeVariant.get_or_create_for_value(
+                    cleaned_det,
+                    determinative=determinative_obj,
+                )
             
             # Handle optional fields
             title_val = safe_get(row, 'Title_Epithet')
@@ -339,7 +345,7 @@ class Command(BaseCommand):
                         'spelling': spelling,
                         'instance_type': type_obj,
                         'writing_type': writing_obj,
-                        'determinative': determinative_obj,
+                        'determinative_variant': determinative_variant,
                         'line': line,
                         'completeness': completeness_obj,
                         'notes': notes,
@@ -378,10 +384,13 @@ class Command(BaseCommand):
             determinatives = [d.strip() for d in determinative_str.split(',') if d.strip()]
             
             for det_name in determinatives:
-                if det_name not in determinative_cache:
-                    det_obj, _ = Determinative.objects.get_or_create(name=det_name)
-                    determinative_cache[det_name] = det_obj
-                det_obj = determinative_cache[det_name]
+                canonical_name = Determinative.normalize_name(det_name)
+                if not canonical_name:
+                    continue
+                if canonical_name not in determinative_cache:
+                    det_obj, _ = Determinative.objects.get_or_create(name=canonical_name)
+                    determinative_cache[canonical_name] = det_obj
+                det_obj = determinative_cache[canonical_name]
                 name_obj.determinatives.add(det_obj)
                 count += 1
         
