@@ -18,7 +18,7 @@
             <input type="text" class="edit-mode inline-input inline-input-large" name="name" value="{{ name.name }}" style="display:none;">
             {% endif %}
             {% if name.name_type.name == 'place' %}
-            <a href="https://www.hethport.uni-wuerzburg.de/HiTop/hetgeoitem.php?i={{ name.name|urlencode }}" target="_blank" rel="noopener" class="hitop-link" title="View in HiTop database">see at HiTop →</a>
+            <a href="https://hethport.net/HiTop/hetgeoitem.php?i={{ name.name|urlencode }}" target="_blank" rel="noopener" class="hitop-link" title="View in HiTop database">see at HiTop →</a>
             {% endif %}
         </h1>
         <div class="detail-meta">
@@ -319,7 +319,7 @@
                 </td>
                 <td>
                     {% if instance.fragment and instance.fragment.series.name != 'BoHa' and instance.fragment.series.name != 'BoBe' and instance.fragment.series.name != 'Bo' %}
-                    <a href="https://www.hethport.uni-wuerzburg.de/TLHdig/tlh_xtx.php?d={{ instance.fragment.series.name|urlencode }}%20{{ instance.fragment.fragment_number|urlencode }}" target="_blank" rel="noopener" class="tlhdig-link" title="View in TLHdig">TLH<sup>dig</sup></a>
+                    <a href="https://hethport.net/TLHdig/tlh_xtx.php?d={{ instance.fragment.series.name|urlencode }}%20{{ instance.fragment.fragment_number|urlencode }}" target="_blank" rel="noopener" class="tlhdig-link" title="View in TLHdig">TLH<sup>dig</sup></a>
                     {% else %}
                     —
                     {% endif %}
